@@ -165,13 +165,13 @@ Assert-Equal $profile.Body.data.role 'USER' '[5] 资料 role 正确'
 # ============================================================
 # [Step 6] 无 token 获取资料(鉴权拦截)
 # 命令: GET /api/auth/profile  不带 Authorization 头
-# 预期(规格): HTTP 401;  实测: HTTP 403 空 body (缺陷 D1)
+# 预期(规格): HTTP 401 + 统一 JSON
 # 验证点: 未认证请求被拦截, 且按规格应返回统一 401
 Show-Step '[Step 6] 无 token 获取资料(鉴权拦截)'
 $anon = Invoke-Api -Method Get -Uri "$BaseUrl/auth/profile"
 Show-Body $anon
 Assert-Equal $anon.StatusCode 401 '[6] 无 token 返回 HTTP 401(规格)'
-Write-Host '      [WARN] 实测 403 空 body —— SecurityConfig 缺 AuthenticationEntryPoint, 请后端修复后重跑' -ForegroundColor Yellow
+Assert-Equal $anon.Body.code 401 '[6] 无 token 业务 code=401(规格)'
 
 # ============================================================
 # [Step 7] 带 token 修改昵称
@@ -201,15 +201,16 @@ Assert-Equal $profile2.Body.data.username $Username '[8] username 未受影响'
 # ============================================================
 # [Step 9a] 修改密码(错误原密码应失败)
 # 命令: PUT /api/auth/password  body: {oldPassword=错误,newPassword}
-# 预期(规格-待验证项): 拒绝修改;  实测: HTTP 403 空 body (缺陷 D2)
+# 预期(规格): HTTP 400 + 统一 JSON
 # 验证点: 原密码校验必须拦截, 且应按统一格式返回 400
 Show-Step '[Step 9a] 修改密码(错误原密码应失败)'
 $pwdWrong = Invoke-Api -Method Put -Uri "$BaseUrl/auth/password" -Body @{
     oldPassword = $WrongPassword; newPassword = $NewPassword
 } -Token $script:Token
 Show-Body $pwdWrong
-Assert-Equal $pwdWrong.StatusCode 403 '[9a] 错误原密码返回 HTTP 403(实测行为)'
-Write-Host '      [WARN] 期望统一 400 {"code":400,"message":"原密码错误"}, 实测 403 —— 缺全局异常处理器, 请后端修复' -ForegroundColor Yellow
+Assert-Equal $pwdWrong.StatusCode 400 '[9a] 错误原密码返回 HTTP 400(规格)'
+Assert-Equal $pwdWrong.Body.code 400 '[9a] 错误原密码业务 code=400(规格)'
+Assert-Equal $pwdWrong.Body.message '原密码错误' '[9a] 错误原密码 message=原密码错误'
 
 # ============================================================
 # [Step 9b] 修改密码(正确原密码应成功)
@@ -256,11 +257,11 @@ Write-Host "`n========== 测试结果汇总 ==========" -ForegroundColor Cyan
 Write-Host "  通过: $($script:PassCount)   失败: $($script:FailCount)"
 Write-Host "  测试用户: $Username"
 if ($script:FailCount -gt 0) {
-    Write-Host "`n[缺陷定位] 失败断言与后端根因对应:" -ForegroundColor Yellow
-    Write-Host "  Step 6   : 无 token 应 401, 实测 403 —— SecurityConfig 缺 AuthenticationEntryPoint" -ForegroundColor Yellow
-    Write-Host "  Step 9a  : 原密码错误应统一 400, 实测 403 —— 缺全局异常处理器" -ForegroundColor Yellow
-    Write-Host "  Step 10/11: 密码未落库 —— UserMapper.xml <update> 缺 password 字段, changePassword 是空操作" -ForegroundColor Yellow
-    Write-Host "  结论: 存在失败断言, 请后端按上述根因修复后重跑" -ForegroundColor Red
+    Write-Host "`n[失败详情] 请根据上方 FAIL 行定位失败步骤" -ForegroundColor Yellow
+    
+    
+    
+    
     exit 1
 } else {
     Write-Host "  结论: 全部通过" -ForegroundColor Green
