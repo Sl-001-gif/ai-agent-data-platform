@@ -1,0 +1,43 @@
+# 下一会话任务书：政务数据接入分析（真实数据端到端验证）
+
+> 承接：2026-08-01 爬虫阶段收尾（commit 88eb6e6）。上一阶段已把邵阳政务公开数据抓取入库（3496 条唯一记录，0 重复，0 导航噪音；82 条历史栏目壳页清理 SQL 待用户确认）。
+> 本阶段目标：把真实政务数据接入 AI 分析链路，端到端验证 parse → sql → execute → 图表 → 解读 → 报告，补齐规则 SQL / 指标口径 / 元数据缺口，让创新点在真实数据上出成果。
+
+## 一、前置（Step 0，用户决策 / 本机执行）
+1. **82 条栏目壳页清理确认**：SQL 见 `docs/plans/2026-08-01-crawler-fix.md` 十五节（执行后约 3414 条）。不清理则继续用 3496 条，但「发文量/类目占比」等指标含壳页噪音。
+2. **幂等复跑最终验证**：`cd tools/scraper; python gov_scraper.py --source shaoyang --pages 12`，过滤器已补漏，预期「新增 0 条」。
+3. **新宁县源**（可选，不阻塞）：用户提供新宁县官网信息公开目录真实 URL → 替换 `sources.xinning.list_url` + `confirmed: True`。
+
+## 二、摸底结论（已探明，供直接使用）
+- **元数据已就绪**：`dataset`(1) / `table_schema`(1，gov_info_record「政府信息公开记录」) / `table_field`(7) / `metric_definition`(4：发文量、类目占比、平均每日发文量、单位发文量)。
+- **AI 政务链路已建**：`RuleIntentRecognizer`（政务关键词路由）→ `AnalysisPlanner`（GOV 计划要素：SALES_TREND/RANKING/STRUCTURE/GENERAL）→ `RuleSqlGenerator.GOV_TEMPLATES`（月度趋势/单位排名/类目分布/类目×单位）→ `SqlValidator` 白名单含 gov_info_record → `DataInterpreter/FollowupRecommender/ReportGenerator` 政务变体。
+- 🔴 **缺口 1：`publish_unit` 全表为空（3496/3496）**、`doc_no` 仅 29 条有值 → RANKING「单位发文量排名」SQL 会得到全 NULL 分组，模板失效。
+- 🟡 **缺口 2：口径需在真实数据上复核**：`平均每日发文量` = COUNT(*)/DATEDIFF(MAX,MIN(publish_date))，含 2005~2026 长区间会被稀释；`类目占比` 分母为全表行数。
+
+## 三、实施步骤
+### 1. 发文单位提取（核心缺口，建议 A+B 组合）
+- **A. 详情页补充**：`supplement_from_detail` 增加抓取详情页正文头部/来源行的发布单位（脚本按 source_url 唯一键幂等更新，需用户本机联网跑一次补充任务）。
+- **B. URL/域名推断**：部门子站域名 → 单位名映射（如 `fgw.shaoyang.gov.cn → 邵阳市发展和改革委员会`、`hbj.shaoyang.gov.cn → 邵阳市生态环境局`），覆盖约 20+ 部门；门户 `/shaoyang/` 路径按类目归属门户本级。
+- **C. 类目代理（兜底）**：无单位时以类目近似单位，仅用于演示排名并标注口径。
+### 2. 端到端验证（3 个演示问题，LLM + 规则双模式）
+- 「邵阳近 3 年按月发文量趋势」（SALES_TREND / line）
+- 「各公开类目发文量分布占比」（STRUCTURE / pie）
+- 「各部门/单位发文量排名 Top10」（RANKING / bar）
+### 3. 补齐规则与口径
+- `RuleSqlGenerator` GOV 模板按真实字段调整（RANKING 单位缺失时回退类目，或按 A/B 提取后恢复）；`metric_definition` 修订口径说明；元数据注释补充。
+- 涉及 `ai/`（RuleSqlGenerator、AnalysisPlanner 等）——**改前输出完整影响链经用户确认**；`service/`、`mapper/` 改前 `rg` 列调用方。
+### 4. 三层测试
+- L1：单位提取映射、GOV 模板 SQL、口径修订单测（沙箱直驱真实类）。
+- L2：execute 集成断言真实政务数据（发文量 > 0、类目分布和 = 100%、排名非空）。
+- L3：`analysis-execute-e2e.ps1` 增政务用例 + `llm-verify-e2e.ps1` 真实 key 验证解读/报告含政务口径。
+### 5. 演示与收尾
+- 前端用真实数据演示 3 个问题（图表/解读/报告）；更新 AGENTS.md 进度与 README；提交由用户确认后本机执行。
+
+## 四、预算与红线
+- 预计 4~6 主文件 / 300~400 行（单位提取脚本 + gov 模板；测试不计），超出「3 文件/100 行」需用户批准。
+- 不碰 `config/`、不重写执行链路；不改动已提交的爬虫过滤规则（除非新宁县源需要）。
+- 实施完不自动 commit，由用户确认后提交。
+
+## 五、待用户提供
+- 新宁县人民政府官网「信息公开目录」真实 URL（可用 `probe_site.py` 探测）。
+- 82 条壳页清理确认；是否同意本阶段预算超限。
