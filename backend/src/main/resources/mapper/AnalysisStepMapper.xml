@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiagent.mapper.AnalysisStepMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO analysis_step (session_id, step_order, step_type, input_data, output_data, status, error_message, duration_ms)
+        VALUES (#{sessionId}, #{stepOrder}, #{stepType}, #{inputData}, #{outputData}, #{status}, #{errorMessage}, #{durationMs})
+    </insert>
+
+    <delete id="deleteBySessionId">
+        DELETE FROM analysis_step WHERE session_id = #{sessionId}
+    </delete>
+
+    <select id="selectBySessionId" resultType="com.aiagent.entity.AnalysisStep">
+        SELECT id, session_id, step_order, step_type, input_data, output_data, status, error_message, duration_ms, create_time
+        FROM analysis_step
+        WHERE session_id = #{sessionId}
+        ORDER BY step_order
+    </select>
+
+</mapper>

@@ -19,7 +19,7 @@ public class SqlValidator {
     }
 
     private static final Set<String> TABLE_WHITELIST =
-            new HashSet<>(List.of("order_info", "user_info", "product_info"));
+            new HashSet<>(List.of("order_info", "user_info", "product_info", "GOV_INFO_RECORD", "gov_info_record"));
 
     private static final Set<String> STATEMENT_BLACKLIST = new HashSet<>(List.of(
             "DROP", "UPDATE", "DELETE", "INSERT", "ALTER", "TRUNCATE", "CREATE", "REPLACE",

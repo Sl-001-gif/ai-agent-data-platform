@@ -26,6 +26,12 @@ public class AnalysisPlanner {
             "GENERAL", new PlanSpec("order_info", List.of("订单量", "销售额", "客单价"), List.of("日期", "区域"), "table")
     );
 
+    /** 政务类意图 → 计划要素映射（目标表 gov_info_record）。 */
+    private static final Map<String, PlanSpec> GOV_SPECS = Map.of(
+            "SALES_TREND", new PlanSpec("GOV_INFO_RECORD", List.of("发文量", "日均发文量"), List.of("发布日期"), "line"),
+            "RANKING", new PlanSpec("GOV_INFO_RECORD", List.of("发文量"), List.of("公开单位"), "bar"),
+            "STRUCTURE", new PlanSpec("GOV_INFO_RECORD", List.of("发文量"), List.of("公开类目"), "pie"),
+            "GENERAL", new PlanSpec("GOV_INFO_RECORD", List.of("发文量", "类目占比"), List.of("公开类目", "公开单位"), "table"));
     private final DemoMetadataCatalog metadataCatalog;
 
     public AnalysisPlanner(DemoMetadataCatalog metadataCatalog) {
@@ -34,9 +40,12 @@ public class AnalysisPlanner {
 
     public AnalysisPlan buildPlan(RecognizedIntent intent) {
         String type = intent == null || intent.getIntentType() == null ? "GENERAL" : intent.getIntentType();
-        PlanSpec spec = SPECS.getOrDefault(type, SPECS.get("GENERAL"));
+        boolean govRelated = intent != null && intent.getMatchedKeywords() != null
+                && intent.getMatchedKeywords().contains("政务公开");
+        Map<String, PlanSpec> specs = govRelated ? GOV_SPECS : SPECS;
+        PlanSpec spec = specs.getOrDefault(type, specs.get("GENERAL"));
         DemoMetadataCatalog.DemoTable table = metadataCatalog.getTable(spec.tableName());
-        String tableComment = table == null ? spec.tableName() : table.comment();
+        String tableComment = govRelated ? "政府信息公开记录" : (table == null ? spec.tableName() : table.comment());
         return new AnalysisPlan(spec.tableName(), tableComment,
                 spec.metrics(), spec.dimensions(), DEFAULT_TIME_RANGE, spec.chartType(), STEPS);
     }

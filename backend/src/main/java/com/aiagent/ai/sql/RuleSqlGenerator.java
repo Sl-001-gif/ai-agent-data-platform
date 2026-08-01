@@ -16,6 +16,7 @@ public class RuleSqlGenerator implements SqlGenerator {
     private static final Pattern NUMBER_PATTERN = Pattern.compile("\\d+");
     private static final String DEFAULT_DAYS = "30";
     private static final String GENERAL_TYPE = "GENERAL";
+    private static final String GOV_TABLE = "GOV_INFO_RECORD";
 
     /** 意图 → 模板 SQL，按意图类型排列，未知/空意图回退 GENERAL。 */
     private static final Map<String, String> TEMPLATES = new LinkedHashMap<>();
@@ -46,10 +47,28 @@ public class RuleSqlGenerator implements SqlGenerator {
                         + "FROM order_info GROUP BY order_date, region ORDER BY order_date");
     }
 
+    /** GOV 意图 → 模板 SQL：目标表为 GOV_INFO_RECORD 时使用，其余意图回退 GENERAL gov 模板。 */
+    private static final Map<String, String> GOV_TEMPLATES = new LinkedHashMap<>();
+
+    static {
+        GOV_TEMPLATES.put("SALES_TREND",
+                "SELECT DATE_FORMAT(publish_date,'%Y-%m') AS month, COUNT(*) AS doc_count "
+                        + "FROM gov_info_record WHERE publish_date >= {timeRange} GROUP BY month ORDER BY month");
+        GOV_TEMPLATES.put("RANKING",
+                "SELECT publish_unit, COUNT(*) AS doc_count FROM gov_info_record GROUP BY publish_unit "
+                        + "ORDER BY doc_count DESC LIMIT 10");
+        GOV_TEMPLATES.put("STRUCTURE",
+                "SELECT category, COUNT(*) AS doc_count FROM gov_info_record GROUP BY category");
+        GOV_TEMPLATES.put("GENERAL",
+                "SELECT category, publish_unit, COUNT(*) AS doc_count FROM gov_info_record GROUP BY category, publish_unit");
+    }
+
     @Override
     public GeneratedSql generate(AnalysisPlan plan, RecognizedIntent intent) {
         String type = intent == null || intent.getIntentType() == null ? GENERAL_TYPE : intent.getIntentType();
-        String template = TEMPLATES.getOrDefault(type, TEMPLATES.get(GENERAL_TYPE));
+        String targetTable = plan == null ? null : plan.getTargetTable();
+        Map<String, String> templates = GOV_TABLE.equalsIgnoreCase(targetTable) ? GOV_TEMPLATES : TEMPLATES;
+        String template = templates.getOrDefault(type, templates.get(GENERAL_TYPE));
         String sql = template.replace("{timeRange}", buildTimeRange(plan));
         return new GeneratedSql(sql, "RULE");
     }

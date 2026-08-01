@@ -27,10 +27,13 @@ public class RuleIntentRecognizer implements IntentRecognizer {
 
     private static final double GENERAL_CONFIDENCE = 0.1;
 
+    /** 政务类关键词：命中即在 matchedKeywords 追加 "政务公开" 标记，供计划器路由到 gov_info_record。 */
+    private static final List<String> GOV_KEYWORDS = List.of("政务", "公开", "政府", "发文", "邵阳", "新宁");
+
     @Override
     public RecognizedIntent recognize(String text) {
         if (text == null || text.trim().isEmpty()) {
-            return new RecognizedIntent("GENERAL", "通用探索", GENERAL_CONFIDENCE, List.of());
+            return new RecognizedIntent("GENERAL", "通用探索", GENERAL_CONFIDENCE, markGov(text, List.of()));
         }
         String normalized = text.toLowerCase(Locale.ROOT);
 
@@ -43,13 +46,29 @@ public class RuleIntentRecognizer implements IntentRecognizer {
             }
             if (!matched.isEmpty()) {
                 double confidence = Math.min(1.0, 0.5 + 0.15 * matched.size());
-                return new RecognizedIntent(entry.getKey(), entry.getValue().name(), confidence, matched);
+                return new RecognizedIntent(entry.getKey(), entry.getValue().name(), confidence, markGov(text, matched));
             }
         }
-        return new RecognizedIntent("GENERAL", "通用探索", GENERAL_CONFIDENCE, List.of());
+        return new RecognizedIntent("GENERAL", "通用探索", GENERAL_CONFIDENCE, markGov(text, List.of()));
     }
 
     /** 意图规则（名称 + 关键词组）。 */
+    private List<String> markGov(String text, List<String> matched) {
+        if (text == null || text.trim().isEmpty()) {
+            return matched;
+        }
+        String normalized = text.toLowerCase(Locale.ROOT);
+        for (String keyword : GOV_KEYWORDS) {
+            if (normalized.contains(keyword)) {
+                List<String> result = new ArrayList<>(matched);
+                if (!result.contains("政务公开")) {
+                    result.add("政务公开");
+                }
+                return result;
+            }
+        }
+        return matched;
+    }
     private record IntentRule(String name, List<String> keywords) {
     }
 }

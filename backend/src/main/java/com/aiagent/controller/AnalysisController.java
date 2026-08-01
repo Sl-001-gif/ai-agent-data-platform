@@ -1,15 +1,21 @@
 package com.aiagent.controller;
 
+import com.aiagent.ai.executor.SqlExecutor;
 import com.aiagent.ai.intent.IntentRecognizer;
 import com.aiagent.ai.intent.RecognizedIntent;
 import com.aiagent.ai.planner.AnalysisPlan;
 import com.aiagent.ai.planner.AnalysisPlanner;
 import com.aiagent.ai.sql.SqlGenerator;
 import com.aiagent.ai.sql.SqlValidator;
+import com.aiagent.dto.AnalysisExecuteRequest;
 import com.aiagent.dto.AnalysisParseRequest;
 import com.aiagent.dto.ApiResponse;
+import com.aiagent.entity.AnalysisSession;
+import com.aiagent.service.AnalysisTraceService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,22 +24,32 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** 数据分析入口：意图识别 + 分析计划 + Text-to-SQL 生成与校验。 */
+/** 数据分析入口：意图识别 + 分析计划 + Text-to-SQL 生成校验 + SQL 受控执行与步骤追踪。 */
 @RestController
 @RequestMapping("/api/analysis")
 public class AnalysisController {
+
+    private static final int TITLE_MAX_LENGTH = 50;
 
     private final IntentRecognizer intentRecognizer;
     private final AnalysisPlanner analysisPlanner;
     private final SqlGenerator sqlGenerator;
     private final SqlValidator sqlValidator;
+    private final SqlExecutor sqlExecutor;
+    private final AnalysisTraceService analysisTraceService;
+    private final ObjectMapper objectMapper;
 
     public AnalysisController(IntentRecognizer intentRecognizer, AnalysisPlanner analysisPlanner,
-                              SqlGenerator sqlGenerator, SqlValidator sqlValidator) {
+                              SqlGenerator sqlGenerator, SqlValidator sqlValidator,
+                              SqlExecutor sqlExecutor, AnalysisTraceService analysisTraceService,
+                              ObjectMapper objectMapper) {
         this.intentRecognizer = intentRecognizer;
         this.analysisPlanner = analysisPlanner;
         this.sqlGenerator = sqlGenerator;
         this.sqlValidator = sqlValidator;
+        this.sqlExecutor = sqlExecutor;
+        this.analysisTraceService = analysisTraceService;
+        this.objectMapper = objectMapper;
     }
 
     /** 自然语言解析：识别分析意图并生成结构化分析计划。 */
@@ -66,5 +82,74 @@ public class AnalysisController {
             return ResponseEntity.ok(ApiResponse.success("SQL 生成成功", data));
         }
         return ResponseEntity.ok(new ApiResponse<>(422, "SQL 校验未通过", data));
+    }
+
+    /** 全链路执行：会话（覆盖式复用）→ 意图 → 计划 → SQL → 校验 → 受控执行，每步落库追踪。 */
+    @PostMapping("/execute")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> execute(@Valid @RequestBody AnalysisExecuteRequest request,
+                                                                    Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+        String text = request.getText();
+        String title = text.length() > TITLE_MAX_LENGTH ? text.substring(0, TITLE_MAX_LENGTH) : text;
+
+        AnalysisSession session = analysisTraceService.startOrReuse(userId, request.getSessionId(), title);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("sessionId", session.getId());
+
+        long start = System.currentTimeMillis();
+        RecognizedIntent intent = intentRecognizer.recognize(text);
+        analysisTraceService.appendStep(session.getId(), 1, "INTENT", toJson(text), toJson(intent),
+                "SUCCESS", null, System.currentTimeMillis() - start);
+        data.put("intent", intent);
+
+        start = System.currentTimeMillis();
+        AnalysisPlan plan = analysisPlanner.buildPlan(intent);
+        analysisTraceService.appendStep(session.getId(), 2, "PLAN", toJson(intent), toJson(plan),
+                "SUCCESS", null, System.currentTimeMillis() - start);
+        data.put("plan", plan);
+
+        start = System.currentTimeMillis();
+        SqlGenerator.GeneratedSql generated = sqlGenerator.generate(plan, intent);
+        analysisTraceService.appendStep(session.getId(), 3, "SQL", toJson(plan), toJson(generated),
+                "SUCCESS", null, System.currentTimeMillis() - start);
+        data.put("sql", generated.sql());
+
+        start = System.currentTimeMillis();
+        SqlValidator.ValidationResult validation = sqlValidator.validate(generated.sql(), plan.getTargetTable());
+        if (validation.valid()) {
+            analysisTraceService.appendStep(session.getId(), 4, "VALIDATE", toJson(generated.sql()), toJson(validation),
+                    "SUCCESS", null, System.currentTimeMillis() - start);
+        } else {
+            analysisTraceService.appendStep(session.getId(), 4, "VALIDATE", toJson(generated.sql()), toJson(validation),
+                    "FAILED", String.join("; ", validation.errors()), System.currentTimeMillis() - start);
+            data.put("validation", validation);
+            return ResponseEntity.ok(new ApiResponse<>(422, "SQL 校验未通过", data));
+        }
+        data.put("validation", validation);
+
+        start = System.currentTimeMillis();
+        SqlExecutor.ExecutionResult execution;
+        try {
+            execution = sqlExecutor.execute(generated.sql());
+        } catch (SqlExecutor.SqlExecutionException e) {
+            analysisTraceService.appendStep(session.getId(), 5, "EXECUTE", toJson(generated.sql()), null,
+                    "FAILED", e.getMessage(), System.currentTimeMillis() - start);
+            throw e;
+        }
+        analysisTraceService.appendStep(session.getId(), 5, "EXECUTE", toJson(generated.sql()), toJson(execution),
+                "SUCCESS", null, System.currentTimeMillis() - start);
+        data.put("execution", execution);
+        data.put("chartType", plan.getChartType());
+        return ResponseEntity.ok(ApiResponse.success("分析执行成功", data));
+    }
+
+    /** 步骤输入输出 JSON 序列化，失败回退 String.valueOf。 */
+    private String toJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            return String.valueOf(value);
+        }
     }
 }
