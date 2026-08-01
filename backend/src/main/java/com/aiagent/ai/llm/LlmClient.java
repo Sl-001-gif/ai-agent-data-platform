@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,7 +88,9 @@ public class LlmClient {
             messages.add(Map.of("role", "system", "content", systemPrompt));
             messages.add(Map.of("role", "user", "content", userPrompt));
             body.put("messages", messages);
-            body.put("temperature", temperature);
+            if (supportsTemperature(model)) {
+                body.put("temperature", temperature);
+            }
             if (maxTokens > 0) {
                 body.put("max_tokens", maxTokens);
             }
@@ -99,6 +102,10 @@ public class LlmClient {
                     .timeout(TIMEOUT_MS)
                     .execute()) {
                 JsonNode root = objectMapper.readTree(response.body());
+                String apiError = root.path("error").path("message").asText(null);
+                if (apiError != null && !apiError.isBlank()) {
+                    throw new RuntimeException("LLM 调用失败: " + apiError);
+                }
                 String content = root.path("choices").path(0).path("message").path("content").asText(null);
                 if (content == null || content.isBlank()) {
                     throw new RuntimeException("LLM 响应缺少 content");
@@ -134,6 +141,11 @@ public class LlmClient {
 
     private static String safe(String s, String fallback) {
         return notBlank(s) ? s : fallback;
+    }
+
+    /** K2 系列推理模型仅允许 temperature=1，省略该参数即用默认值 1；其余模型按配置传参。 */
+    static boolean supportsTemperature(String model) {
+        return model == null || !model.toLowerCase(Locale.ROOT).contains("k2");
     }
 
     private static String trimTrailingSlash(String url) {
