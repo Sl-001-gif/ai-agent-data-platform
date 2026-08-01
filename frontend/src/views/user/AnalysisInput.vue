@@ -110,6 +110,31 @@
               </el-table>
             </template>
           </el-card>
+          <el-card v-if="executeResult?.interpretation" shadow="never" style="margin-top: 16px;">
+            <template #header>
+              <span>AI 解读</span>
+              <el-tag v-if="executeResult.interpretation.generatorType === 'LLM'" type="success" size="small" style="margin-left: 8px;">LLM</el-tag>
+              <el-tag v-else type="info" size="small" style="margin-left: 8px;">规则</el-tag>
+            </template>
+            <div style="white-space: pre-wrap; line-height: 1.8;">{{ executeResult.interpretation.text }}</div>
+          </el-card>
+
+          <el-card v-if="executeResult?.followups?.length" shadow="never" style="margin-top: 16px;">
+            <template #header>
+              <span>你可能还想问</span>
+            </template>
+            <el-button
+              v-for="(q, index) in executeResult.followups"
+              :key="index"
+              type="primary"
+              plain
+              size="small"
+              style="margin: 4px 8px 4px 0;"
+              @click="askFollowup(q)"
+            >
+              {{ q }}
+            </el-button>
+          </el-card>
         </div>
       </el-main>
     </el-container>
@@ -212,13 +237,18 @@ async function executeCurrentAnalysis() {
   }
 }
 
+function askFollowup(q) {
+  analysisGoal.value = q;
+  executeCurrentAnalysis();
+}
+
 function stepType(index) {
   if (executeCode.value !== 200) {
     if (index < 3) return "success";
     if (index === 3) return "danger";
     return "info";
   }
-  return index < 5 ? "success" : "info";
+  return index < 5 || index === 6 ? "success" : "info";
 }
 
 function renderChart() {

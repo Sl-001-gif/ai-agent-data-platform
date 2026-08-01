@@ -16,9 +16,13 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -38,10 +42,14 @@ class AnalysisExecuteInvalidSqlIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @MockBean
     private SqlGenerator sqlGenerator;
 
     private static String testToken;
+    private static Long testSessionId;
     private static final String TEST_USER = "exec_inv_e2e_" + System.currentTimeMillis();
 
     @BeforeEach
@@ -92,6 +100,17 @@ class AnalysisExecuteInvalidSqlIntegrationTest {
                 .andExpect(jsonPath("$.code").value(422))
                 .andExpect(jsonPath("$.data.execution").doesNotExist())
                 .andExpect(jsonPath("$.data.validation").exists())
-                .andExpect(jsonPath("$.data.validation.valid").value(false));
+                .andExpect(jsonPath("$.data.validation.valid").value(false))
+                .andExpect(jsonPath("$.data.interpretation").doesNotExist())
+                .andExpect(jsonPath("$.data.followups").doesNotExist())
+                .andDo(result -> testSessionId = objectMapper.readTree(result.getResponse().getContentAsString())
+                        .path("data").path("sessionId").asLong());
+
+        assertNotNull(testSessionId);
+        Integer interpretCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM analysis_step WHERE session_id = ? AND step_type = 'INTERPRET'",
+                Integer.class, testSessionId);
+        assertNotNull(interpretCount);
+        assertEquals(0, interpretCount, "校验失败路径不应产生 INTERPRET 步骤");
     }
 }

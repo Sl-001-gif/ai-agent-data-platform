@@ -17,7 +17,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
 
+import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -107,6 +110,10 @@ class AnalysisExecuteIntegrationTest {
                 .andExpect(jsonPath("$.data.execution.rowCount").value(greaterThanOrEqualTo(1)))
                 .andExpect(jsonPath("$.data.execution.columns").isNotEmpty())
                 .andExpect(jsonPath("$.data.chartType").isNotEmpty())
+                .andExpect(jsonPath("$.data.interpretation.text").isNotEmpty())
+                .andExpect(jsonPath("$.data.interpretation.generatorType").value(anyOf(is("LLM"), is("RULE"))))
+                .andExpect(jsonPath("$.data.followups").isArray())
+                .andExpect(jsonPath("$.data.followups", hasSize(greaterThanOrEqualTo(2))))
                 .andDo(result -> testSessionId = objectMapper.readTree(result.getResponse().getContentAsString())
                         .path("data").path("sessionId").asLong());
 
@@ -114,7 +121,12 @@ class AnalysisExecuteIntegrationTest {
         Integer stepCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM analysis_step WHERE session_id = ?", Integer.class, testSessionId);
         assertNotNull(stepCount);
-        assertTrue(stepCount >= 5);
+        assertTrue(stepCount >= 6);
+        Integer interpretCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM analysis_step WHERE session_id = ? AND step_type = 'INTERPRET'",
+                Integer.class, testSessionId);
+        assertNotNull(interpretCount);
+        assertTrue(interpretCount >= 1, "execute 应落库 INTERPRET 步骤");
     }
 
     @Test

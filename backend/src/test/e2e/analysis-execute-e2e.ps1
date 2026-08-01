@@ -153,6 +153,11 @@ for ($i = 0; $i -lt $cases.Count; $i++) {
     Assert-True ($rows.Count -gt 0) "[3.$n] execution.rows 非空"
     Assert-True (-not [string]::IsNullOrWhiteSpace($chartType)) "[3.$n] chartType 非空"
     Assert-True (-not [string]::IsNullOrWhiteSpace($sessionId)) "[3.$n] sessionId 非空"
+    $interpretation = $resp.Body.data.interpretation
+    $followups = @()
+    if ($null -ne $resp.Body.data.followups) { $followups = @($resp.Body.data.followups) }
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$interpretation.text)) "[3.$n] interpretation.text 非空"
+    Assert-True ($followups.Count -ge 2) "[3.$n] followups >= 2" "实际=$($followups.Count)"
 }
 
 # ============================================================

@@ -98,10 +98,26 @@ if (-not [string]::IsNullOrWhiteSpace($outRow)) {
 Write-Host ("      [INFO] generatorType = {0}" -f $genType)
 Assert-True ($genType -eq 'LLM') '[4] generatorType=LLM（真实 LLM 生效）' "实际=$genType（RULE=未配 key 或回退兜底）"
 
+
+$sessionId = [string]$data.sessionId
+Write-Host "`n=== [5] 解读与追问（interpretation/followups）===" -ForegroundColor Cyan
+$interpText = [string]$data.interpretation.text
+$followups = @()
+if ($null -ne $data.followups) { $followups = @($data.followups) }
+Assert-True (-not [string]::IsNullOrWhiteSpace($interpText)) '[5] interpretation.text 非空'
+Assert-True ($followups.Count -ge 2) '[5] followups >= 2' "实际=$($followups.Count)"
+
+Write-Host "`n=== [6] 查库确认 INTERPRET 步骤 generatorType=LLM ===" -ForegroundColor Cyan
+$interpRow = (& $Mysql -uroot ai_agent_data -N -e "SELECT output_data FROM analysis_step WHERE session_id =  AND step_type='INTERPRET' ORDER BY id DESC LIMIT 1" 2>$null | Select-Object -First 1)
+$interpGenType = ''
+if (-not [string]::IsNullOrWhiteSpace($interpRow)) {
+    try { $interpGenType = [string](($interpRow | ConvertFrom-Json).interpretation.generatorType) } catch { $interpGenType = '' }
+}
+Assert-True ($interpGenType -eq 'LLM') '[6] INTERPRET generatorType=LLM（真实 LLM 生效）' "实际=$interpGenType"
 Write-Host "`n========== 结果汇总 ==========" -ForegroundColor Cyan
 Write-Host "  通过: $($script:PassCount)   失败: $($script:FailCount)"
 if ($script:FailCount -gt 0) {
-    Write-Host "  提示: 若仅 [4] 失败，说明 key 未生效——请确认后端是在设了 `$env:AI_API_KEY 的终端启动的，或 key 无效" -ForegroundColor Yellow
+    Write-Host "  提示: 若 [4]/[6] 失败，说明 key 未生效——请确认后端是在设了 `$env:AI_API_KEY 的终端启动的，或 key 无效" -ForegroundColor Yellow
     exit 1
 } else {
     Write-Host "  结论: LLM 链路真实生效，全部通过" -ForegroundColor Green
