@@ -114,10 +114,23 @@ if (-not [string]::IsNullOrWhiteSpace($interpRow)) {
     try { $interpGenType = [string](($interpRow | ConvertFrom-Json).interpretation.generatorType) } catch { $interpGenType = '' }
 }
 Assert-True ($interpGenType -eq 'LLM') '[6] INTERPRET generatorType=LLM（真实 LLM 生效）' "实际=$interpGenType"
+Write-Host "`n=== [7] 报告生成（真实 LLM 链路）===" -ForegroundColor Cyan
+$repResp = Invoke-Api -Method Post -Uri "$BaseUrl/analysis/report" -Body @{ sessionId = [int64]$sessionId } -Token $token
+Assert-True ($repResp.StatusCode -eq 200) '[7] report HTTP 200' "实际=$($repResp.StatusCode)"
+$report = $repResp.Body.data.report
+Assert-True (-not [string]::IsNullOrWhiteSpace([string]$report.content)) '[7] report.content 非空'
+Assert-True ($report.generatorType -eq 'LLM') '[7] report generatorType=LLM（真实 LLM 生效）' "实际=$($report.generatorType)"
+$repDbRow = (& $Mysql -uroot ai_agent_data -N -e "SELECT COUNT(*) FROM analysis_report WHERE session_id = $sessionId" 2>$null | Select-Object -First 1)
+if ([string]::IsNullOrWhiteSpace($repDbRow)) { $repDbRow = '0' }
+Assert-True ([int]$repDbRow -eq 1) '[7] analysis_report 已落库 1 行（覆盖式）' "实际=$repDbRow"
+$repStep = (& $Mysql -uroot ai_agent_data -N -e "SELECT COUNT(*) FROM analysis_step WHERE session_id = $sessionId AND step_type='REPORT'" 2>$null | Select-Object -First 1)
+if ([string]::IsNullOrWhiteSpace($repStep)) { $repStep = '0' }
+Assert-True ([int]$repStep -ge 1) '[7] REPORT 步骤已落库' "实际=$repStep"
+
 Write-Host "`n========== 结果汇总 ==========" -ForegroundColor Cyan
 Write-Host "  通过: $($script:PassCount)   失败: $($script:FailCount)"
 if ($script:FailCount -gt 0) {
-    Write-Host "  提示: 若 [4]/[6] 失败，说明 key 未生效——请确认后端是在设了 `$env:AI_API_KEY 的终端启动的，或 key 无效" -ForegroundColor Yellow
+    Write-Host "  提示: 若 [4]/[6]/[7] 失败，说明 key 未生效——请确认后端是在设了 `$env:AI_API_KEY 的终端启动的，或 key 无效" -ForegroundColor Yellow
     exit 1
 } else {
     Write-Host "  结论: LLM 链路真实生效，全部通过" -ForegroundColor Green

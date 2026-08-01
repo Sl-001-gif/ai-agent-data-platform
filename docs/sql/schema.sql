@@ -1,4 +1,4 @@
-﻿-- =============================================
+-- =============================================
 -- AI Agent 数据分析平台 - 数据库初始化脚本
 -- =============================================
 
@@ -171,8 +171,26 @@ CREATE TABLE IF NOT EXISTS prompt_template (
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Prompt 模板表';
 
+
+-- ---------------------------------------------
+-- AI 数据源配置表
+-- ---------------------------------------------
+CREATE TABLE IF NOT EXISTS ai_data_source (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    db_type VARCHAR(20) DEFAULT 'MYSQL',
+    host VARCHAR(100) NOT NULL,
+    port INT NOT NULL DEFAULT 3306,
+    database_name VARCHAR(100) NOT NULL,
+    username VARCHAR(100) NOT NULL,
+    password VARCHAR(200) NOT NULL COMMENT 'v1 演示明文存储',
+    remark VARCHAR(255),
+    create_by BIGINT,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 数据源配置表';
 -- ---------------------------------------------
 -- 初始化管理员账号 (密码: admin123)
 -- ---------------------------------------------
 INSERT INTO sys_user (username, password, nickname, role, status)
-VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '系统管理员', 'ADMIN', 1);
+VALUES ('admin', '$2a$10$y7OYaEl6AAAIsJy9wxzrROo7b41zJHxWlgY19fb9N20t4lnBNShPG', '系统管理员', 'ADMIN', 1);

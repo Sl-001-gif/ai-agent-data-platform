@@ -7,3 +7,7 @@ export function parseAnalysis(data) {
 export function executeAnalysis(data) {
   return request.post("/analysis/execute", data);
 }
+
+export function generateReport(data) {
+  return request.post("/analysis/report", data);
+}

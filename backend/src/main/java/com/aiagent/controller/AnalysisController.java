@@ -7,13 +7,20 @@ import com.aiagent.ai.interpreter.DataInterpreter;
 import com.aiagent.ai.planner.AnalysisPlan;
 import com.aiagent.ai.planner.AnalysisPlanner;
 import com.aiagent.ai.recommender.FollowupRecommender;
+import com.aiagent.ai.report.ReportGenerator;
 import com.aiagent.ai.sql.SqlGenerator;
 import com.aiagent.ai.sql.SqlValidator;
 import com.aiagent.dto.AnalysisExecuteRequest;
 import com.aiagent.dto.AnalysisParseRequest;
+import com.aiagent.dto.AnalysisReportRequest;
 import com.aiagent.dto.ApiResponse;
+import com.aiagent.entity.AnalysisReport;
 import com.aiagent.entity.AnalysisSession;
+import com.aiagent.entity.AnalysisStep;
+import com.aiagent.mapper.AnalysisReportMapper;
+import com.aiagent.mapper.AnalysisStepMapper;
 import com.aiagent.service.AnalysisTraceService;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** 数据分析入口：意图识别 + 分析计划 + Text-to-SQL 生成校验 + SQL 受控执行与步骤追踪。 */
+/** 数据分析入口：意图识别 + 分析计划 + Text-to-SQL 生成校验 + SQL 受控执行与步骤追踪 + AI 解读/追问/报告。 */
 @RestController
 @RequestMapping("/api/analysis")
 public class AnalysisController {
@@ -42,13 +49,17 @@ public class AnalysisController {
     private final DataInterpreter dataInterpreter;
     private final FollowupRecommender followupRecommender;
     private final AnalysisTraceService analysisTraceService;
+    private final AnalysisStepMapper stepMapper;
+    private final AnalysisReportMapper reportMapper;
+    private final ReportGenerator reportGenerator;
     private final ObjectMapper objectMapper;
 
     public AnalysisController(IntentRecognizer intentRecognizer, AnalysisPlanner analysisPlanner,
                               SqlGenerator sqlGenerator, SqlValidator sqlValidator,
                               SqlExecutor sqlExecutor, DataInterpreter dataInterpreter,
                               FollowupRecommender followupRecommender, AnalysisTraceService analysisTraceService,
-                              ObjectMapper objectMapper) {
+                              AnalysisStepMapper stepMapper, AnalysisReportMapper reportMapper,
+                              ReportGenerator reportGenerator, ObjectMapper objectMapper) {
         this.intentRecognizer = intentRecognizer;
         this.analysisPlanner = analysisPlanner;
         this.sqlGenerator = sqlGenerator;
@@ -57,6 +68,9 @@ public class AnalysisController {
         this.dataInterpreter = dataInterpreter;
         this.followupRecommender = followupRecommender;
         this.analysisTraceService = analysisTraceService;
+        this.stepMapper = stepMapper;
+        this.reportMapper = reportMapper;
+        this.reportGenerator = reportGenerator;
         this.objectMapper = objectMapper;
     }
 
@@ -162,6 +176,122 @@ public class AnalysisController {
         data.put("interpretation", interpretation);
         data.put("followups", followups);
         return ResponseEntity.ok(ApiResponse.success("分析执行成功", data));
+    }
+
+    /** 报告生成：从已落库步骤重建上下文，LLM 优先 + 规则降级，覆盖式写入 analysis_report 并落库 REPORT 步骤。 */
+    @PostMapping("/report")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> report(@Valid @RequestBody AnalysisReportRequest request,
+                                                                   Authentication authentication) {
+        Long userId = (Long) authentication.getPrincipal();
+
+        AnalysisSession session;
+        try {
+            session = analysisTraceService.validateOwnership(userId, request.getSessionId());
+        } catch (RuntimeException e) {
+            return ResponseEntity.ok(new ApiResponse<>(422, "会话不存在或无权访问",
+                    Map.of("sessionId", request.getSessionId())));
+        }
+
+        List<AnalysisStep> steps = stepMapper.selectBySessionId(session.getId());
+        AnalysisStep intentStep = findStep(steps, "INTENT");
+        AnalysisStep planStep = findStep(steps, "PLAN");
+        AnalysisStep executeStep = findStep(steps, "EXECUTE");
+        AnalysisStep interpretStep = findStep(steps, "INTERPRET");
+        if (intentStep == null || planStep == null || executeStep == null) {
+            return ResponseEntity.ok(new ApiResponse<>(422, "请先执行分析后再生成报告",
+                    Map.of("sessionId", session.getId())));
+        }
+
+        String question;
+        RecognizedIntent intent;
+        AnalysisPlan plan;
+        SqlExecutor.ExecutionResult execution;
+        String interpretationText;
+        try {
+            question = readText(intentStep.getInputData());
+            intent = readValue(intentStep.getOutputData(), RecognizedIntent.class);
+            plan = readValue(planStep.getOutputData(), AnalysisPlan.class);
+            execution = readValue(executeStep.getOutputData(), SqlExecutor.ExecutionResult.class);
+            interpretationText = readInterpretation(interpretStep);
+        } catch (RuntimeException e) {
+            return ResponseEntity.ok(new ApiResponse<>(422, "执行数据不完整，请重新执行分析后再生成报告",
+                    Map.of("sessionId", session.getId())));
+        }
+
+        long start = System.currentTimeMillis();
+        ReportGenerator.ReportResult report = reportGenerator.generate(plan, intent, execution, interpretationText, question);
+
+        reportMapper.deleteBySessionId(session.getId());
+        AnalysisReport entity = new AnalysisReport();
+        entity.setSessionId(session.getId());
+        entity.setTitle(report.title());
+        entity.setContent(report.content());
+        entity.setStatus("DONE");
+        entity.setCreateBy(userId);
+        reportMapper.insert(entity);
+
+        Map<String, Object> stepOutput = new LinkedHashMap<>();
+        stepOutput.put("title", report.title());
+        stepOutput.put("generatorType", report.generatorType());
+        stepOutput.put("templateName", report.templateName());
+        stepOutput.put("contentLength", report.content().length());
+        analysisTraceService.appendStep(session.getId(), 8, "REPORT",
+                toJson(Map.of("question", question, "rowCount", execution.rowCount(), "columns", execution.columns())),
+                toJson(stepOutput), "SUCCESS", null, System.currentTimeMillis() - start);
+
+        Map<String, Object> reportData = new LinkedHashMap<>();
+        reportData.put("id", entity.getId());
+        reportData.put("title", report.title());
+        reportData.put("content", report.content());
+        reportData.put("generatorType", report.generatorType());
+        reportData.put("templateName", report.templateName());
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("sessionId", session.getId());
+        data.put("report", reportData);
+        return ResponseEntity.ok(ApiResponse.success("报告生成成功", data));
+    }
+
+    private static AnalysisStep findStep(List<AnalysisStep> steps, String stepType) {
+        if (steps == null) {
+            return null;
+        }
+        for (AnalysisStep step : steps) {
+            if (stepType.equals(step.getStepType())) {
+                return step;
+            }
+        }
+        return null;
+    }
+
+    /** 步骤 JSON 字符串解码：INTENT 的 input 是原文 JSON 字符串。 */
+    private String readText(String json) {
+        try {
+            return objectMapper.readTree(json).asText();
+        } catch (Exception e) {
+            return json;
+        }
+    }
+
+    private <T> T readValue(String json, Class<T> type) {
+        try {
+            return objectMapper.readValue(json, type);
+        } catch (Exception e) {
+            throw new RuntimeException("步骤数据解析失败: " + type.getSimpleName(), e);
+        }
+    }
+
+    /** 从 INTERPRET 步骤输出提取解读正文。 */
+    private String readInterpretation(AnalysisStep step) {
+        if (step == null || step.getOutputData() == null) {
+            return "";
+        }
+        try {
+            JsonNode node = objectMapper.readTree(step.getOutputData());
+            return node.path("interpretation").path("text").asText();
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     /** 步骤输入输出 JSON 序列化，失败回退 String.valueOf。 */

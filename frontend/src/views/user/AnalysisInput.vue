@@ -6,6 +6,7 @@
           <h2 style="font-size: 18px;">AI Agent 数据分析平台</h2>
           <div>
             <el-button text @click="router.push('/profile')">个人信息</el-button>
+            <el-button v-if="userStore.isAdmin" text type="primary" @click="router.push('/admin')">管理后台</el-button>
             <el-button text @click="handleLogout">退出登录</el-button>
           </div>
         </div>
@@ -135,8 +136,33 @@
               {{ q }}
             </el-button>
           </el-card>
+
+          <el-card v-if="executeCode === 200 && executeResult?.execution" shadow="never" style="margin-top: 16px;">
+            <template #header>
+              <span>分析报告</span>
+            </template>
+            <el-button type="primary" :loading="generatingReport" @click="generateReportAction">
+              生成报告
+            </el-button>
+            <template v-if="reportResult">
+              <div style="margin-top: 12px;">
+                <el-tag v-if="reportResult.generatorType === 'LLM'" type="success" size="small">LLM</el-tag>
+                <el-tag v-else type="info" size="small">规则</el-tag>
+              </div>
+              <h3 style="margin: 12px 0 8px;">{{ reportResult.title }}</h3>
+              <div
+                style="white-space: pre-wrap; line-height: 1.8; background: #fafafa; border: 1px solid #ebeef5; border-radius: 4px; padding: 12px; max-height: 420px; overflow: auto;"
+              >
+                {{ reportResult.content }}
+              </div>
+              <div style="margin-top: 12px;">
+                <el-button size="small" @click="copyReport">复制</el-button>
+                <el-button size="small" @click="downloadReport">下载 .md</el-button>
+              </div>
+            </template>
+          </el-card>
         </div>
-      </el-main>
+      </el-main>"
     </el-container>
   </div>
 </template>
@@ -147,7 +173,7 @@ import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import * as echarts from "echarts";
 import { useUserStore } from "@/stores/user";
-import { parseAnalysis, executeAnalysis } from "@/api/analysis";
+import { parseAnalysis, executeAnalysis, generateReport } from "@/api/analysis";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -159,6 +185,8 @@ const executeResult = ref(null);
 const executeCode = ref(null);
 const executeMessage = ref("");
 const sessionId = ref(null);
+const reportResult = ref(null);
+const generatingReport = ref(false);
 const executing = ref(false);
 const chartRef = ref(null);
 const chartInstance = ref(null);
@@ -211,6 +239,7 @@ async function executeCurrentAnalysis() {
   }
   executing.value = true;
   executeResult.value = null;
+  reportResult.value = null;
   executeCode.value = null;
   try {
     const res = await executeAnalysis({
@@ -242,13 +271,56 @@ function askFollowup(q) {
   executeCurrentAnalysis();
 }
 
+async function generateReportAction() {
+  if (!sessionId.value) {
+    ElMessage.warning("请先执行分析");
+    return;
+  }
+  generatingReport.value = true;
+  try {
+    const res = await generateReport({ sessionId: sessionId.value });
+    if (res.code === 200) {
+      reportResult.value = res.data?.report || null;
+      ElMessage.success("报告生成成功");
+    } else {
+      ElMessage.warning(res.message || "报告生成失败");
+    }
+  } catch (error) {
+    // 错误提示已由 request.js 拦截器统一处理
+  } finally {
+    generatingReport.value = false;
+  }
+}
+
+function copyReport() {
+  if (!reportResult.value?.content) {
+    return;
+  }
+  navigator.clipboard?.writeText(reportResult.value.content).then(() => {
+    ElMessage.success("已复制到剪贴板");
+  });
+}
+
+function downloadReport() {
+  if (!reportResult.value?.content) {
+    return;
+  }
+  const blob = new Blob([reportResult.value.content], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = (reportResult.value.title || "分析报告") + ".md";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function stepType(index) {
   if (executeCode.value !== 200) {
     if (index < 3) return "success";
     if (index === 3) return "danger";
     return "info";
   }
-  return index < 5 || index === 6 ? "success" : "info";
+  return index < 5 || index === 6 || index === 7 ? "success" : "info";
 }
 
 function renderChart() {

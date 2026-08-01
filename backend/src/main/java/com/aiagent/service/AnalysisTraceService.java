@@ -33,14 +33,20 @@ public class AnalysisTraceService {
             sessionMapper.insert(session);
             return session;
         }
-        AnalysisSession existing = sessionMapper.selectById(sessionId);
-        if (existing == null || !userId.equals(existing.getUserId())) {
-            throw new RuntimeException("会话不存在或无权访问");
-        }
+        AnalysisSession existing = validateOwnership(userId, sessionId);
         stepMapper.deleteBySessionId(sessionId);
         existing.setTitle(title);
         existing.setStatus("ACTIVE");
         sessionMapper.update(existing);
+        return existing;
+    }
+
+    /** 只读校验会话归属（不清理步骤），供报告生成等只读场景复用。 */
+    public AnalysisSession validateOwnership(Long userId, Long sessionId) {
+        AnalysisSession existing = sessionMapper.selectById(sessionId);
+        if (existing == null || !userId.equals(existing.getUserId())) {
+            throw new RuntimeException("会话不存在或无权访问");
+        }
         return existing;
     }
 
@@ -59,10 +65,10 @@ public class AnalysisTraceService {
         stepMapper.insert(step);
     }
 
-    private String truncate(String text) {
-        if (text == null) {
+    private static String truncate(String value) {
+        if (value == null) {
             return null;
         }
-        return text.length() > MAX_OUTPUT_LENGTH ? text.substring(0, MAX_OUTPUT_LENGTH) : text;
+        return value.length() > MAX_OUTPUT_LENGTH ? value.substring(0, MAX_OUTPUT_LENGTH) : value;
     }
 }

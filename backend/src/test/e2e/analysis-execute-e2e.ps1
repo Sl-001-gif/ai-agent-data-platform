@@ -179,6 +179,35 @@ Show-Body $blank
 Assert-Equal $blank.StatusCode 400 '[5] 空文本返回 HTTP 400'
 
 # ============================================================
+# [Step 6] 报告生成（/api/analysis/report，覆盖式）
+# 预期: HTTP 200, report.content 非空; 重复生成仍 1 行; REPORT 步骤落库; 缺参数 400; 无 token 401
+# ============================================================
+Show-Step '[Step 6] /api/analysis/report 报告生成'
+$repResp = Invoke-Api -Method Post -Uri "$BaseUrl/analysis/report" -Body @{ sessionId = [int64]$sessionId } -Token $script:Token
+Show-Body $repResp
+$report = $repResp.Body.data.report
+Assert-Equal $repResp.StatusCode 200 '[6] report 返回 HTTP 200'
+Assert-Equal $repResp.Body.code 200 '[6] report 业务 code=200'
+Assert-True (-not [string]::IsNullOrWhiteSpace([string]$report.title)) '[6] report.title 非空'
+Assert-True (-not [string]::IsNullOrWhiteSpace([string]$report.content)) '[6] report.content 非空'
+Assert-True ($report.generatorType -eq 'LLM' -or $report.generatorType -eq 'RULE') '[6] generatorType 为 LLM 或 RULE'
+
+$repResp2 = Invoke-Api -Method Post -Uri "$BaseUrl/analysis/report" -Body @{ sessionId = [int64]$sessionId } -Token $script:Token
+Assert-Equal $repResp2.StatusCode 200 '[6] 重复生成返回 HTTP 200'
+$repRowCount = (& $Mysql @MysqlArgs -N -e "SELECT COUNT(*) FROM analysis_report WHERE session_id = $sessionId" 2>$null | Select-Object -First 1)
+if ([string]::IsNullOrWhiteSpace($repRowCount)) { $repRowCount = '0' }
+Assert-True ([int]$repRowCount -eq 1) '[6] 覆盖式：analysis_report 仅 1 行' "实际=$repRowCount"
+$repStepCount = (& $Mysql @MysqlArgs -N -e "SELECT COUNT(*) FROM analysis_step WHERE session_id = $sessionId AND step_type='REPORT'" 2>$null | Select-Object -First 1)
+if ([string]::IsNullOrWhiteSpace($repStepCount)) { $repStepCount = '0' }
+Assert-True ([int]$repStepCount -ge 1) '[6] REPORT 步骤已落库' "实际=$repStepCount"
+
+$repMissing = Invoke-Api -Method Post -Uri "$BaseUrl/analysis/report" -Body @{ } -Token $script:Token
+Assert-Equal $repMissing.StatusCode 400 '[6] 缺 sessionId 返回 HTTP 400'
+
+$repAnon = Invoke-Api -Method Post -Uri "$BaseUrl/analysis/report" -Body @{ sessionId = [int64]$sessionId }
+Assert-Equal $repAnon.StatusCode 401 '[6] 无 token 返回 HTTP 401'
+
+# ============================================================
 # 汇总输出与退出码
 # ============================================================
 Write-Host "`n========== 测试结果汇总 ==========" -ForegroundColor Cyan
