@@ -207,3 +207,11 @@ DELETE FROM gov_info_record
      OR source_url LIKE '%tyhd_index.shtml%' OR source_url LIKE '%xsjfb.shtml%'
      OR source_url LIKE '%yshjzqt.shtml%' OR source_url LIKE '%rlist_c.shtml%');
 ```
+
+## 十六、最终收尾实测（2026-08-01 23:xx 用户复跑完成）
+- 复跑结果：树模式抓取完成——**新增 195 | 更新 636 | 未变 3360 | 失败 1**
+- 82 条栏目壳页清理已执行（用户确认「清理」）；过滤器补漏后**壳页 0 复活、导航 0**
+- 复跑补抓第一轮漏抓的真实类目（树接口超时曾跳过）：规划计划、市直部门规范性文件等，新增 195 条全部为 `/YYYYMM/hash.shtml` 真实记录，幂等机制正常（重复抓不重复入库，只补漏）
+- **最终数据：gov_info_record 3601 条唯一记录**（0 重复 / 0 空标题 / 0 壳页 / 0 导航 / 日期填充 99.94% / 约 45 类目 / 2017~2026 均衡；日期缺失仅 2 条）
+- 遗留：`publish_unit` 全表为空（3601/3601）、`doc_no` 仅 13 条有值 → 下一阶段先补发文单位提取（见 `docs/plans/2026-08-02-gov-analysis.md`）
+- 全部变更已提交：88eb6e6（爬虫修复）+ 95eefdb（文档）+ 本次数据收尾文档

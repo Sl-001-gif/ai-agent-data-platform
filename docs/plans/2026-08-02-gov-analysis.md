@@ -1,17 +1,17 @@
 # 下一会话任务书：政务数据接入分析（真实数据端到端验证）
 
-> 承接：2026-08-01 爬虫阶段收尾（commit 88eb6e6）。上一阶段已把邵阳政务公开数据抓取入库（3496 条唯一记录，0 重复，0 导航噪音；82 条历史栏目壳页清理 SQL 待用户确认）。
+> 承接：2026-08-01 爬虫阶段收尾（commit 88eb6e6）。上一阶段已把邵阳政务公开数据抓取入库（**3601 条唯一记录**，0 重复 / 0 壳页 / 0 导航噪音；82 条栏目壳页已清理、复跑补抓 195 条漏抓真实记录）。
 > 本阶段目标：把真实政务数据接入 AI 分析链路，端到端验证 parse → sql → execute → 图表 → 解读 → 报告，补齐规则 SQL / 指标口径 / 元数据缺口，让创新点在真实数据上出成果。
 
 ## 一、前置（Step 0，用户决策 / 本机执行）
-1. **82 条栏目壳页清理确认**：SQL 见 `docs/plans/2026-08-01-crawler-fix.md` 十五节（执行后约 3414 条）。不清理则继续用 3496 条，但「发文量/类目占比」等指标含壳页噪音。
-2. **幂等复跑最终验证**：`cd tools/scraper; python gov_scraper.py --source shaoyang --pages 12`，过滤器已补漏，预期「新增 0 条」。
+1. ✅ **82 条栏目壳页已清理**（2026-08-01 用户确认后执行），当前基线 3601 条，无需再做。
+2. ✅ **幂等复跑已完成**（新增 195 / 更新 636 / 未变 3360 / 失败 1）——新增为补抓第一轮漏抓类目，幂等机制正常。
 3. **新宁县源**（可选，不阻塞）：用户提供新宁县官网信息公开目录真实 URL → 替换 `sources.xinning.list_url` + `confirmed: True`。
 
 ## 二、摸底结论（已探明，供直接使用）
 - **元数据已就绪**：`dataset`(1) / `table_schema`(1，gov_info_record「政府信息公开记录」) / `table_field`(7) / `metric_definition`(4：发文量、类目占比、平均每日发文量、单位发文量)。
 - **AI 政务链路已建**：`RuleIntentRecognizer`（政务关键词路由）→ `AnalysisPlanner`（GOV 计划要素：SALES_TREND/RANKING/STRUCTURE/GENERAL）→ `RuleSqlGenerator.GOV_TEMPLATES`（月度趋势/单位排名/类目分布/类目×单位）→ `SqlValidator` 白名单含 gov_info_record → `DataInterpreter/FollowupRecommender/ReportGenerator` 政务变体。
-- 🔴 **缺口 1：`publish_unit` 全表为空（3496/3496）**、`doc_no` 仅 29 条有值 → RANKING「单位发文量排名」SQL 会得到全 NULL 分组，模板失效。
+- 🔴 **缺口 1：`publish_unit` 全表为空（3601/3601）**、`doc_no` 仅 13 条有值 → RANKING「单位发文量排名」SQL 会得到全 NULL 分组，模板失效。
 - 🟡 **缺口 2：口径需在真实数据上复核**：`平均每日发文量` = COUNT(*)/DATEDIFF(MAX,MIN(publish_date))，含 2005~2026 长区间会被稀释；`类目占比` 分母为全表行数。
 
 ## 三、实施步骤
