@@ -36,3 +36,10 @@ desktop.ini
 
 # ===== 测试临时文件 =====
 docs/sandbox_test.md
+
+# ===== Python =====
+__pycache__/
+*.pyc
+
+# ===== 爬虫探测输出 =====
+tools/scraper/probe_output/
