@@ -55,8 +55,8 @@ public class RuleSqlGenerator implements SqlGenerator {
                 "SELECT DATE_FORMAT(publish_date,'%Y-%m') AS month, COUNT(*) AS doc_count "
                         + "FROM gov_info_record WHERE publish_date >= {timeRange} GROUP BY month ORDER BY month");
         GOV_TEMPLATES.put("RANKING",
-                "SELECT publish_unit, COUNT(*) AS doc_count FROM gov_info_record GROUP BY publish_unit "
-                        + "ORDER BY doc_count DESC LIMIT 10");
+                "SELECT COALESCE(NULLIF(publish_unit,''), category) AS unit, COUNT(*) AS doc_count "
+                        + "FROM gov_info_record GROUP BY unit ORDER BY doc_count DESC LIMIT 10");
         GOV_TEMPLATES.put("STRUCTURE",
                 "SELECT category, COUNT(*) AS doc_count FROM gov_info_record GROUP BY category");
         GOV_TEMPLATES.put("GENERAL",

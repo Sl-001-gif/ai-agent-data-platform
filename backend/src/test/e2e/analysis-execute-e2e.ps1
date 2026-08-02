@@ -136,7 +136,8 @@ $cases = @(
     @{ Text = '销售占比结构' },
     @{ Text = '整体情况' },
     @{ Text = '政务信息公开类目排名' },
-    @{ Text = '政务信息发布趋势' }
+    @{ Text = '政务信息发布趋势' },
+    @{ Text = '各部门/单位发文量排名Top10' }
 )
 for ($i = 0; $i -lt $cases.Count; $i++) {
     $case = $cases[$i]
@@ -161,6 +162,66 @@ for ($i = 0; $i -lt $cases.Count; $i++) {
 }
 
 # ============================================================
+# [Step 3.5] 政务真实数据专项验证（3 个演示问题：趋势/分布/排名）
+# 预期: 目标表=GOV_INFO_RECORD；规则模式下列数和=全表、排名单位非空
+# ============================================================
+Show-Step '[Step 3.5] 政务真实数据专项验证'
+$govCases = @(
+    @{ Text = '邵阳近3年按月发文量趋势'; Intent = 'SALES_TREND'; Chart = 'line' },
+    @{ Text = '各公开类目发文量分布占比'; Intent = 'STRUCTURE'; Chart = 'pie' },
+    @{ Text = '各部门/单位发文量排名Top10'; Intent = 'RANKING'; Chart = 'bar' }
+)
+for ($g = 0; $g -lt $govCases.Count; $g++) {
+    $gc = $govCases[$g]
+    $gn = $g + 1
+    $resp = Invoke-Api -Method Post -Uri "$BaseUrl/analysis/execute" -Body @{ text = $gc.Text } -Token $script:Token
+    Show-Body $resp
+    $execution = $resp.Body.data.execution
+    $rows = @()
+    if ($null -ne $execution) { $rows = @($execution.rows) }
+    Assert-Equal $resp.StatusCode 200 "[3.5.$gn] execute 返回 HTTP 200"
+    Assert-Equal $resp.Body.code 200 "[3.5.$gn] execute 业务 code=200"
+    Assert-Equal $resp.Body.data.intent.intentType $gc.Intent "[3.5.$gn] 意图=$($gc.Intent)"
+    Assert-Equal $resp.Body.data.plan.targetTable 'GOV_INFO_RECORD' "[3.5.$gn] 目标表=GOV_INFO_RECORD"
+    Assert-Equal $resp.Body.data.chartType $gc.Chart "[3.5.$gn] 图表=$($gc.Chart)"
+    Assert-True ($rows.Count -gt 0) "[3.5.$gn] execution.rows 非空"
+    $genRow = (& $Mysql @MysqlArgs -N -e "SELECT output_data FROM analysis_step WHERE step_type='SQL' ORDER BY id DESC LIMIT 1" 2>$null | Select-Object -First 1)
+    $isRule = $false
+    if (-not [string]::IsNullOrWhiteSpace($genRow)) {
+        try { $isRule = ([string](($genRow | ConvertFrom-Json).generatorType) -eq 'RULE') } catch { $isRule = $false }
+    }
+    if ($gc.Intent -eq 'SALES_TREND') {
+        $first = $rows[0]
+        Assert-True ($null -ne $first -and @($first.PSObject.Properties).Count -ge 2) "[3.5.$gn] 趋势行含月份/发文量字段" "实际字段数=$(@($first.PSObject.Properties).Count)"
+    }
+    if ($gc.Intent -eq 'STRUCTURE') {
+        $sum = [long]0
+        foreach ($r in $rows) {
+            foreach ($prop in $r.PSObject.Properties) {
+                if ($prop.Value -is [int] -or $prop.Value -is [long] -or $prop.Value -is [double]) { $sum += [long]$prop.Value }
+            }
+        }
+        Assert-True ($sum -gt 0) "[3.5.$gn] 类目分布发文量之和>0" "实际=$sum"
+        if ($isRule) {
+            $govTotal = (& $Mysql @MysqlArgs -N -e "SELECT COUNT(*) FROM gov_info_record" 2>$null | Select-Object -First 1)
+            if ([string]::IsNullOrWhiteSpace($govTotal)) { $govTotal = '0' }
+            Assert-True ($sum -eq [int]$govTotal) "[3.5.$gn] 类目分布之和=全表($govTotal)（规则模式）" "实际=$sum"
+        }
+    }
+    if ($gc.Intent -eq 'RANKING') {
+        Assert-True ($rows.Count -le 10) "[3.5.$gn] 排名行数<=10" "实际=$($rows.Count)"
+        if ($isRule) {
+            $nonEmpty = 0
+            foreach ($r in $rows) {
+                $u = [string]$r.unit
+                if ([string]::IsNullOrWhiteSpace($u)) { $u = [string]$r.publish_unit }
+                if (-not [string]::IsNullOrWhiteSpace($u)) { $nonEmpty++ }
+            }
+            Assert-True ($nonEmpty -eq $rows.Count) "[3.5.$gn] 排名单位全部非空" "实际=$nonEmpty/$($rows.Count)"
+        }
+    }
+}
+
 # [Step 4] 无 token 访问 execute 应 401
 # 预期: HTTP 401
 # ============================================================

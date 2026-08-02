@@ -23,7 +23,8 @@ class RuleSqlGeneratorGovTest {
         SqlGenerator.GeneratedSql generated = generator.generate(govPlan("RANKING"),
                 new RecognizedIntent("RANKING", "排名分析", 0.8, List.of("政务公开")));
         assertTrue(generated.sql().contains("gov_info_record"));
-        assertTrue(generated.sql().contains("GROUP BY publish_unit"));
+        assertTrue(generated.sql().contains("COALESCE(NULLIF(publish_unit,''), category) AS unit"));
+        assertTrue(generated.sql().contains("GROUP BY unit"));
     }
 
     @Test
@@ -42,5 +43,14 @@ class RuleSqlGeneratorGovTest {
                 new RecognizedIntent("USER_PROFILE", "用户画像", 0.8, List.of("政务公开")));
         assertTrue(generated.sql().contains("gov_info_record"));
         assertTrue(generated.sql().contains("GROUP BY category, publish_unit"));
+    }
+
+    @Test
+    void rankingShouldFallbackUnitToCategoryWhenEmpty() {
+        SqlGenerator.GeneratedSql generated = generator.generate(govPlan("RANKING"),
+                new RecognizedIntent("RANKING", "排名分析", 0.8, List.of("发文", "政务公开")));
+        assertTrue(generated.sql().contains("COALESCE(NULLIF(publish_unit,''), category) AS unit"));
+        assertTrue(generated.sql().contains("GROUP BY unit"));
+        assertTrue(generated.sql().contains("LIMIT 10"));
     }
 }

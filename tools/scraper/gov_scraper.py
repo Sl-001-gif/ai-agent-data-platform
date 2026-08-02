@@ -164,12 +164,12 @@ _FIELDS_META = [
 _METRICS_META = [
     {
         "name": "发文量",
-        "description": "政务信息公开平台累计发布的政务信息条数，反映信息公开总体规模",
+        "description": "政务信息公开平台累计发布的政务信息条数，反映信息公开总体规模（口径：直接统计全表记录数，栏目壳页与导航噪音已清理不在其中）",
         "calculation_formula": "SELECT COUNT(*) AS cnt FROM gov_info_record",
     },
     {
         "name": "类目占比",
-        "description": "各公开类目发文量占全部发文量的比例，反映信息公开的结构分布",
+        "description": "各公开类目发文量占全部发文量的比例（分母=全表记录数），反映信息公开的结构分布",
         "calculation_formula": (
             "SELECT category, COUNT(*) AS cnt, "
             "COUNT(*) / (SELECT COUNT(*) FROM gov_info_record) AS ratio "
@@ -178,18 +178,18 @@ _METRICS_META = [
     },
     {
         "name": "平均每日发文量",
-        "description": "按最早与最晚发布日期区间计算的日均发文量，反映发布时效",
+        "description": "按最早与最晚发布日期区间计算的日均发文量，反映发布时效（注意：数据跨度 2005~2026 较长，日均值会被长区间稀释，解读请结合分月趋势）",
         "calculation_formula": (
-            "SELECT COUNT(*) / DATEDIFF(MAX(publish_date), MIN(publish_date)) AS avg_daily "
+            "SELECT ROUND(COUNT(*) / NULLIF(DATEDIFF(MAX(publish_date), MIN(publish_date)), 0), 2) AS avg_daily "
             "FROM gov_info_record WHERE publish_date IS NOT NULL"
         ),
     },
     {
         "name": "单位发文量",
-        "description": "各公开单位发布的政务信息条数，反映各单位信息公开活跃度",
+        "description": "各公开单位发布的政务信息条数，反映各单位信息公开活跃度（口径：详情页真实单位 -> 部门子站域名推断 -> 类目代理兜底；类目代理为近似推断，仅作演示参考）",
         "calculation_formula": (
-            "SELECT publish_unit, COUNT(*) AS cnt FROM gov_info_record "
-            "WHERE publish_unit IS NOT NULL AND publish_unit <> '' GROUP BY publish_unit"
+            "SELECT COALESCE(NULLIF(publish_unit,''), category) AS unit, COUNT(*) AS cnt "
+            "FROM gov_info_record GROUP BY unit ORDER BY cnt DESC LIMIT 10"
         ),
     },
 ]
@@ -202,7 +202,10 @@ _DOC_NO_RE = re.compile(
     r"[\u4e00-\u9fa5A-Za-z]{0,20}[〔\[(（]\s*\d{4}\s*[〕\]）)]\s*[0-9零一二三四五六七八九十百]{1,8}\s*号"
 )
 _DOC_NO_SIMPLE_RE = re.compile(r"[〔\[(（]\s*\d{4}\s*[〕\]）)]\s*\d+号")
-_UNIT_RE = re.compile(r"(?:发布单位|发文机关|责任单位|发文单位|公开单位)\s*[:：]?\s*([\u4e00-\u9fa5（）()]{2,40})")
+_UNIT_RE = re.compile(
+    r"(?:信息发布单位|信息提供单位|来源单位|发布单位|发文机关|责任单位|发文单位|公开单位)"
+    r"\s*[:：]?\s*([\u4e00-\u9fa5（）()]{2,40})"
+)
 _CATEGORY_RE = re.compile(r"(?:公开类别|信息类别|类目名称|栏目名称|所属类目)\s*[:：]?\s*([\u4e00-\u9fa5（）()]{2,30})")
 
 

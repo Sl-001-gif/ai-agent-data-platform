@@ -89,6 +89,20 @@ Write-Host ("      [INFO] SQL: {0}" -f $sql)
 Assert-True ($targetTable -eq 'GOV_INFO_RECORD') '[3] 目标表=GOV_INFO_RECORD'
 Assert-True ($rowCount -gt 0) '[3] execution.rowCount>0' "实际=$rowCount"
 
+Write-Host "`n=== [3.5] 执行政务分析: 各部门/单位发文量排名Top10 ===" -ForegroundColor Cyan
+$resp2 = Invoke-Api -Method Post -Uri "$BaseUrl/analysis/execute" -Body @{ text = '各部门/单位发文量排名Top10' } -Token $token
+Assert-True ($resp2.StatusCode -eq 200) '[3.5] execute HTTP 200' "实际=$($resp2.StatusCode)"
+if ($resp2.StatusCode -ne 200 -and $null -ne $resp2.Body) { Write-Host ("      [INFO] 后端返回: {0}" -f ($resp2.Body | ConvertTo-Json -Compress -Depth 8)) }
+$data2 = $resp2.Body.data
+$rowCount2 = 0
+if ($null -ne $data2.execution) { $rowCount2 = [int]$data2.execution.rowCount }
+$targetTable2 = [string]$data2.plan.targetTable
+$intent2 = [string]$data2.intent.intentType
+Write-Host ("      [INFO] 目标表={0} 意图={1} 行数={2}" -f $targetTable2, $intent2, $rowCount2)
+Assert-True ($intent2 -eq 'RANKING') '[3.5] 意图=RANKING' "实际=$intent2"
+Assert-True ($targetTable2 -eq 'GOV_INFO_RECORD') '[3.5] 目标表=GOV_INFO_RECORD' "实际=$targetTable2"
+Assert-True ($rowCount2 -gt 0) '[3.5] execution.rowCount>0' "实际=$rowCount2"
+
 Write-Host "`n=== [4] 查库确认生成器类型 generatorType ===" -ForegroundColor Cyan
 $outRow = (& $Mysql -uroot ai_agent_data -N -e "SELECT output_data FROM analysis_step WHERE step_type='SQL' ORDER BY id DESC LIMIT 1" 2>$null | Select-Object -First 1)
 $genType = ''
@@ -108,7 +122,7 @@ Assert-True (-not [string]::IsNullOrWhiteSpace($interpText)) '[5] interpretation
 Assert-True ($followups.Count -ge 2) '[5] followups >= 2' "实际=$($followups.Count)"
 
 Write-Host "`n=== [6] 查库确认 INTERPRET 步骤 generatorType=LLM ===" -ForegroundColor Cyan
-$interpRow = (& $Mysql -uroot ai_agent_data -N -e "SELECT output_data FROM analysis_step WHERE session_id =  AND step_type='INTERPRET' ORDER BY id DESC LIMIT 1" 2>$null | Select-Object -First 1)
+$interpRow = (& $Mysql -uroot ai_agent_data -N -e "SELECT output_data FROM analysis_step WHERE session_id = $sessionId AND step_type='INTERPRET' ORDER BY id DESC LIMIT 1" 2>$null | Select-Object -First 1)
 $interpGenType = ''
 if (-not [string]::IsNullOrWhiteSpace($interpRow)) {
     try { $interpGenType = [string](($interpRow | ConvertFrom-Json).interpretation.generatorType) } catch { $interpGenType = '' }

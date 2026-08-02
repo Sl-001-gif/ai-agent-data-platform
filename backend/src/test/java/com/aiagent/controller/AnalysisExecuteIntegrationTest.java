@@ -3,6 +3,7 @@ package com.aiagent.controller;
 import com.aiagent.dto.LoginRequest;
 import com.aiagent.dto.RegisterRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -16,12 +17,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
 
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -146,5 +149,96 @@ class AnalysisExecuteIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("text", "  "))))
                 .andExpect(status().isBadRequest());
+    }
+
+    private void ensureGovTable() {
+        jdbcTemplate.execute("CREATE TABLE IF NOT EXISTS gov_info_record (id BIGINT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(500), doc_no VARCHAR(100), publish_unit VARCHAR(200), category VARCHAR(100), publish_date DATE, source_url VARCHAR(500) UNIQUE, summary TEXT, create_time DATETIME DEFAULT CURRENT_TIMESTAMP)");
+        Integer cnt = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM gov_info_record", Integer.class);
+        if (cnt == null || cnt == 0) {
+            jdbcTemplate.update("INSERT INTO gov_info_record (title, category, publish_date, source_url) VALUES "
+                    + "('邵阳市政务公开年度报告','工作动态',CURDATE(),'https://shaoyang.gov.cn/xxgk/l2seed1'),"
+                    + "('邵阳市财政信息','财政信息',DATE_SUB(CURDATE(), INTERVAL 1 DAY),'https://shaoyang.gov.cn/xxgk/l2seed2'),"
+                    + "('邵阳市统计信息','统计信息',DATE_SUB(CURDATE(), INTERVAL 2 DAY),'https://shaoyang.gov.cn/xxgk/l2seed3')");
+        }
+    }
+
+    private String executeGov(String text) throws Exception {
+        return mockMvc.perform(post("/api/analysis/execute")
+                        .header("Authorization", "Bearer " + testToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("text", text))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+    }
+
+    private boolean lastSqlWasRule(Long sessionId) {
+        String out = jdbcTemplate.queryForObject(
+                "SELECT output_data FROM analysis_step WHERE session_id = ? AND step_type = 'SQL' ORDER BY id DESC LIMIT 1",
+                String.class, sessionId);
+        return out != null && out.contains("\"RULE\"");
+    }
+
+    @Test
+    @Order(6)
+    void execute_govTrend_shouldReturnRealRows() throws Exception {
+        ensureGovTable();
+        JsonNode data = objectMapper.readTree(executeGov("邵阳近3年按月发文量趋势")).path("data");
+        assertEquals("SALES_TREND", data.path("intent").path("intentType").asText());
+        assertEquals("GOV_INFO_RECORD", data.path("plan").path("targetTable").asText());
+        assertEquals("line", data.path("chartType").asText());
+        JsonNode execution = data.path("execution");
+        assertTrue(execution.path("rowCount").asLong() > 0, "政务趋势结果行数大于 0（真实数据）");
+        assertTrue(execution.path("columns").size() >= 2, "趋势结果含月份与发文量两列");
+    }
+
+    @Test
+    @Order(7)
+    void execute_govStructure_shouldSumToTotalRecords() throws Exception {
+        ensureGovTable();
+        JsonNode data = objectMapper.readTree(executeGov("各公开类目发文量分布占比")).path("data");
+        assertEquals("STRUCTURE", data.path("intent").path("intentType").asText());
+        assertEquals("GOV_INFO_RECORD", data.path("plan").path("targetTable").asText());
+        JsonNode execution = data.path("execution");
+        Long sessionId = data.path("sessionId").asLong();
+        long sum = 0;
+        for (JsonNode row : execution.path("rows")) {
+            var it = row.fields();
+            while (it.hasNext()) {
+                var entry = it.next();
+                if (entry.getValue().isNumber()) {
+                    sum += entry.getValue().asLong();
+                }
+            }
+        }
+        assertTrue(sum > 0, "类目分布各行发文量之和大于 0");
+        if (lastSqlWasRule(sessionId)) {
+            Integer total = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM gov_info_record", Integer.class);
+            assertNotNull(total);
+            assertEquals(total.longValue(), sum, "类目分布各行之和应等于全表记录数（占比口径分母=100%）");
+        }
+    }
+
+    @Test
+    @Order(8)
+    void execute_govRanking_shouldReturnNonEmptyUnits() throws Exception {
+        ensureGovTable();
+        JsonNode data = objectMapper.readTree(executeGov("各部门/单位发文量排名Top10")).path("data");
+        assertEquals("RANKING", data.path("intent").path("intentType").asText());
+        assertEquals("GOV_INFO_RECORD", data.path("plan").path("targetTable").asText());
+        JsonNode execution = data.path("execution");
+        Long sessionId = data.path("sessionId").asLong();
+        long rowCount = execution.path("rowCount").asLong();
+        assertTrue(rowCount >= 1 && rowCount <= 10, "排名行数应在 1~10");
+        if (lastSqlWasRule(sessionId)) {
+            for (JsonNode row : execution.path("rows")) {
+                String unit = row.path("unit").asText("");
+                if (unit.isBlank()) {
+                    unit = row.path("publish_unit").asText("");
+                }
+                assertTrue(!unit.isBlank(), "排名单位非空（COALESCE 回退类目）");
+                assertTrue(row.path("doc_count").asLong() > 0, "排名发文量大于 0");
+            }
+        }
     }
 }
