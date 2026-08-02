@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-3A 政务数据爬虫：邵阳/新宁县政务信息公开数据抓取与入库
+3A 政务数据爬虫：邵阳市政务信息公开数据抓取与入库
 ============================================================
 
 功能：
@@ -90,14 +90,7 @@ CONFIG = {
             },
 
         },
-        "xinning": {
-            "name": "新宁县人民政府门户网站-信息公开目录",
-            # TODO(用户提供)：新宁县官网信息公开目录实际地址，获取后替换下方占位符，详见 README.md
-            "list_url": "https://www.xinning.gov.cn/xxgk/xxzwgkList.shtml",
-            "pagination": {"mode": "auto", "page_param": "page", "page_start": 1},
-            # 该 URL 未经 probe_site.py 核验，运行时输出启动告警
-            "confirmed": False,
-        },
+
     },
     # 噪音链接过滤规则：配置项为"追加"到内置默认集合并去重；
     # whitelist 为空列表 = 不启用白名单；print_reasons=True 等价命令行 --verbose
@@ -617,7 +610,7 @@ def ensure_metadata(conn, cursor):
             """,
             (
                 "邵阳政务信息公开数据",
-                "数据来源：邵阳市人民政府门户网站及新宁县人民政府门户网站信息公开目录，"
+                "数据来源：邵阳市人民政府门户网站信息公开目录，"
                 "抓取整理两级政府依法主动公开的政务信息；所有资料均为官方依法公开内容，符合数据使用规范。"
                 "由 tools/scraper/gov_scraper.py 抓取入库，用于政务公开统计分析。",
                 "MYSQL",
@@ -946,7 +939,7 @@ def crawl_tree(conn, cursor, session, source, max_pages, interval, verbose=False
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="3A 政务数据爬虫：邵阳/新宁县政务信息公开数据抓取与入库")
+    parser = argparse.ArgumentParser(description="3A 政务数据爬虫：邵阳市政务信息公开数据抓取与入库")
     parser.add_argument("--pages", type=int, default=CONFIG["max_pages"],
                         help="分页抓取上限，默认 %d" % CONFIG["max_pages"])
     parser.add_argument("--source", choices=sorted(CONFIG["sources"].keys()), default="shaoyang",

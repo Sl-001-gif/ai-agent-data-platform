@@ -1,6 +1,6 @@
 # 3A 政务数据爬虫（tools/scraper）
 
-自然语言数据分析平台的配套数据采集工具：抓取邵阳市/新宁县两级政府门户网站**信息公开目录**中依法主动公开的政务信息，结构化入库并同步写入平台元数据（数据集/表结构/字段语义/指标口径），供后续 Text-to-SQL 与统计分析使用。
+自然语言数据分析平台的配套数据采集工具：抓取邵阳市人民政府门户网站**信息公开目录**中依法主动公开的政务信息，结构化入库并同步写入平台元数据（数据集/表结构/字段语义/指标口径），供后续 Text-to-SQL 与统计分析使用。
 
 ## 功能
 
@@ -56,8 +56,8 @@ python gov_scraper.py
 # 指定页数、数据源，并打印被过滤的噪音链接及原因
 python gov_scraper.py --pages 5 --source shaoyang --verbose
 
-# 新宁县数据源（需先配置实际 URL，见下文）
-python gov_scraper.py --pages 5 --source xinning
+# 运行示例（数据源：shaoyang 邵阳市）
+python gov_scraper.py --pages 5 --source shaoyang
 
 # tree 模式：只抓指定类目（名称与树节点 name 精确匹配，逗号分隔）
 python gov_scraper.py --source shaoyang --categories 政策文件,统计信息 --pages 2 --verbose
@@ -68,7 +68,7 @@ python gov_scraper.py --source shaoyang --categories 政策文件,统计信息 -
 | 参数 | 说明 | 默认 |
 |------|------|------|
 | `--pages N` | 分页抓取上限 | 5（CONFIG 中 `max_pages`） |
-| `--source NAME` | 数据源，可选 `shaoyang` / `xinning` | `shaoyang` |
+| `--source NAME` | 数据源（当前仅 `shaoyang` 邵阳市） | `shaoyang` |
 | `--categories A,B` | tree 模式：只抓指定类目（精确匹配树节点 name，逗号分隔） | 全部类目 |
 | `--verbose` | 打印每条被过滤的噪音链接及原因 | 关闭 |
 
@@ -152,7 +152,9 @@ python gov_scraper.py --pages 3
 
 - 内置默认规则（代码 `_TITLE_NAV_EXACT_BLACKLIST` / `_HREF_NAV_BLACKLIST`）除导航标题/URL/容器黑名单外，另含**门户栏目壳页后缀**：`list.shtml`（覆盖部门子站栏目列表页 rlist/llist/lvlist 等）、`nzcjd.shtml`、`zdjcyg.shtml`、`dfxfghgz.shtml`、`wjk_jump.shtml`、`xszf.shtml`、`nzfjg.shtml`、`xxgkjbml.shtml`、`tyhd_index.shtml`、`xsjfb.shtml`、`yshjzqt.shtml`、`rlist_c.shtml`
 - 真实记录 URL 为 `/类目/年月/hash.shtml`，不受上述后缀影响；跨站真实内容（gov.cn/微信/省统计局）与互动平台真实公告（`hd_myzj_content.html?conId=`）保留
-## 数据源与新宁县 URL 占位
+## 数据源（邵阳市）
+
+- 数据范围：**邵阳市**（2026-08-02 决策，新宁县源已移除，不再纳入）
 
 - `shaoyang`（默认，已验证入口）：
   `https://www.shaoyang.gov.cn/shaoyang/xxgk/xxzwgkList.shtml`
@@ -161,13 +163,6 @@ python gov_scraper.py --pages 3
     13 个带真实 URL（统计信息 `stjgb/xlist.shtml`、文件库 `sbjgfxwj/gfxwjlist.shtml`、财政信息 `sbjzfyjs/xlist_djlb.shtml`、
     政策解读 `gfxwjjd/nzcjd.shtml`、重大会议信息 `zfcwhyjjd/xlist.shtml`、规章库 `gzk/gzk.shtml`、机构简介 `szfjg/xzfjg.shtml` 等），
     其余 36 个 `null.shtml` 占位自动探测变体；`zfsj/xsjfb.shtml`（数据发布）仅 8 条公报无分页，不作为主源
-- `xinning`：**占位符** `https://www.xinning.gov.cn/xxgk/xxzwgkList.shtml` 为示例地址，**尚未经用户确认**，
-  配置中 `confirmed: False`。运行 `--source xinning` 会打印启动告警。
-  **待用户提供**新宁县人民政府官网"信息公开"栏目目录页的实际 URL（可用 `probe_site.py` 找到）后：
-  1. 替换 `CONFIG["sources"]["xinning"]["list_url"]`
-  2. 按探测结果设置 `pagination` 与 `noise_filter`
-  3. 删除或改为 `"confirmed": True`
-
 ## 验收口径（修复后如何核对）
 
 1. **噪音过滤**：`python gov_scraper.py --pages 1 --source shaoyang --verbose`，
@@ -209,7 +204,7 @@ python gov_scraper.py --pages 3
 
 ## 合规声明
 
-- 数据来源均为邵阳市、新宁县人民政府门户网站**依法主动公开**的政务信息，符合数据使用规范
+- 数据来源均为邵阳市人民政府门户网站**依法主动公开**的政务信息，符合数据使用规范
 - 本项目抓取仅用于学术研究与政务公开优化分析，不涉及非公开/涉密内容
 - 脚本内置请求间隔与分页上限，建议保持默认值，遵守目标网站服务条款，避免高频抓取
 
