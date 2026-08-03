@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiagent.mapper.AnalysisConfigMapper">
+
+    <insert id="insertIntentRule" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO analysis_intent_rule (intent_code, intent_name, keywords, priority, status)
+        VALUES (#{intentCode}, #{intentName}, #{keywords}, #{priority}, #{status})
+    </insert>
+
+    <update id="updateIntentRule">
+        UPDATE analysis_intent_rule
+        SET intent_code = #{intentCode}, intent_name = #{intentName}, keywords = #{keywords},
+            priority = #{priority}, status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteIntentRule">DELETE FROM analysis_intent_rule WHERE id = #{id}</delete>
+
+    <select id="selectIntentRuleById" resultType="com.aiagent.entity.AnalysisIntentRule">
+        SELECT * FROM analysis_intent_rule WHERE id = #{id}
+    </select>
+
+    <select id="selectIntentRules" resultType="com.aiagent.entity.AnalysisIntentRule">
+        SELECT * FROM analysis_intent_rule ORDER BY priority, id
+    </select>
+
+    <insert id="insertPlanConfig" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO analysis_plan_config (intent_code, is_gov, table_name, metrics, dimensions,
+                                          chart_type, time_range, sql_template, status, sort)
+        VALUES (#{intentCode}, #{isGov}, #{tableName}, #{metrics}, #{dimensions},
+                #{chartType}, #{timeRange}, #{sqlTemplate}, #{status}, #{sort})
+    </insert>
+
+    <update id="updatePlanConfig">
+        UPDATE analysis_plan_config
+        SET intent_code = #{intentCode}, is_gov = #{isGov}, table_name = #{tableName},
+            metrics = #{metrics}, dimensions = #{dimensions}, chart_type = #{chartType},
+            time_range = #{timeRange}, sql_template = #{sqlTemplate}, status = #{status}, sort = #{sort}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deletePlanConfig">DELETE FROM analysis_plan_config WHERE id = #{id}</delete>
+
+    <select id="selectPlanConfigById" resultType="com.aiagent.entity.AnalysisPlanConfig">
+        SELECT * FROM analysis_plan_config WHERE id = #{id}
+    </select>
+
+    <select id="selectPlanConfigs" resultType="com.aiagent.entity.AnalysisPlanConfig">
+        SELECT * FROM analysis_plan_config ORDER BY is_gov, sort, id
+    </select>
+
+</mapper>

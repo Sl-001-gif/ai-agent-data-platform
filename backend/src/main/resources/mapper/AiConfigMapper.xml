@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiagent.mapper.AiConfigMapper">
+
+    <insert id="insertModel" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_model_config (name, model_name, endpoint, max_tokens, temperature, status)
+        VALUES (#{name}, #{modelName}, #{endpoint}, #{maxTokens}, #{temperature}, #{status})
+    </insert>
+
+    <update id="updateModel">
+        UPDATE ai_model_config
+        SET name = #{name}, model_name = #{modelName}, endpoint = #{endpoint},
+            max_tokens = #{maxTokens}, temperature = #{temperature}, status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteModel">DELETE FROM ai_model_config WHERE id = #{id}</delete>
+
+    <select id="selectModelById" resultType="com.aiagent.entity.AiModelConfig">
+        SELECT * FROM ai_model_config WHERE id = #{id}
+    </select>
+
+    <select id="selectModelList" resultType="com.aiagent.entity.AiModelConfig">
+        SELECT * FROM ai_model_config ORDER BY status DESC, id
+    </select>
+
+    <insert id="insertPrompt" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO prompt_template (name, type, content, version, status)
+        VALUES (#{name}, #{type}, #{content}, #{version}, #{status})
+    </insert>
+
+    <update id="updatePrompt">
+        UPDATE prompt_template
+        SET name = #{name}, type = #{type}, content = #{content}, version = #{version}, status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deletePrompt">DELETE FROM prompt_template WHERE id = #{id}</delete>
+
+    <select id="selectPromptById" resultType="com.aiagent.entity.PromptTemplate">
+        SELECT * FROM prompt_template WHERE id = #{id}
+    </select>
+
+    <select id="selectPromptList" resultType="com.aiagent.entity.PromptTemplate">
+        SELECT * FROM prompt_template ORDER BY status DESC, id
+    </select>
+
+</mapper>

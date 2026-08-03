@@ -24,4 +24,18 @@
         WHERE id = #{id}
     </update>
 
+    <select id="selectByUserId" resultType="com.aiagent.entity.AnalysisSession">
+        SELECT id, user_id, dataset_id, title, status, create_time, update_time
+        FROM analysis_session
+        WHERE user_id = #{userId}
+        <if test="keyword != null and keyword != ''">
+            AND title LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY update_time DESC, id DESC
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM analysis_session WHERE id = #{id}
+    </delete>
+
 </mapper>

@@ -56,7 +56,7 @@ async function handleLogin() {
       userStore.setToken(res.data.token);
       userStore.setUserInfo(res.data);
       ElMessage.success("登录成功");
-      router.push("/analysis");
+      router.push("/home");
     } else {
       ElMessage.error(res.message);
     }

@@ -5,6 +5,8 @@ import com.aiagent.dto.LoginResponse;
 import com.aiagent.dto.RegisterRequest;
 import com.aiagent.entity.User;
 import com.aiagent.mapper.UserMapper;
+import java.util.ArrayList;
+import java.util.List;
 import com.aiagent.util.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -84,5 +86,74 @@ public class UserService {
         }
         user.setPassword(passwordEncoder.encode(newPassword));
         userMapper.update(user);
+    }
+
+    // ---------- 管理端用户管理 ----------
+
+    public List<User> listUsers(String keyword) {
+        List<User> users = userMapper.findAll();
+        List<User> result = new ArrayList<>();
+        String kw = keyword == null ? null : keyword.trim().toLowerCase();
+        for (User user : users) {
+            if (kw != null && !kw.isEmpty()
+                    && !user.getUsername().toLowerCase().contains(kw)
+                    && (user.getNickname() == null || !user.getNickname().toLowerCase().contains(kw))) {
+                continue;
+            }
+            user.setPassword(null);
+            result.add(user);
+        }
+        return result;
+    }
+
+    public User createUser(User user) {
+        if (user.getUsername() == null || user.getUsername().isBlank()) {
+            throw new RuntimeException("账号不能为空");
+        }
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new RuntimeException("密码不能为空");
+        }
+        if (userMapper.countByUsername(user.getUsername()) > 0) {
+            throw new RuntimeException("用户名已存在");
+        }
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        if (user.getNickname() == null || user.getNickname().isBlank()) {
+            user.setNickname(user.getUsername());
+        }
+        if (user.getRole() == null || user.getRole().isBlank()) {
+            user.setRole("USER");
+        }
+        if (user.getStatus() == null) {
+            user.setStatus(1);
+        }
+        userMapper.insert(user);
+        return user;
+    }
+
+    public void updateUser(Long id, User update) {
+        User existing = userMapper.findById(id);
+        if (existing == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        existing.setNickname(update.getNickname());
+        existing.setEmail(update.getEmail());
+        existing.setPhone(update.getPhone());
+        existing.setRole(update.getRole());
+        existing.setStatus(update.getStatus());
+        if (update.getPassword() != null && !update.getPassword().isBlank()) {
+            existing.setPassword(passwordEncoder.encode(update.getPassword()));
+        }
+        userMapper.update(existing);
+    }
+
+    public void deleteUser(Long id, Long currentUserId) {
+        if (id.equals(currentUserId)) {
+            throw new RuntimeException("不能删除当前登录账号");
+        }
+        User existing = userMapper.findById(id);
+        if (existing == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        userMapper.deleteById(id);
     }
 }

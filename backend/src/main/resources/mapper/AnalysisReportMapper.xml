@@ -20,4 +20,17 @@
         LIMIT 1
     </select>
 
+    <select id="selectByUserId" resultType="com.aiagent.entity.AnalysisReport">
+        SELECT id, session_id, title, content, status, create_by, create_time, update_time
+        FROM analysis_report
+        WHERE create_by = #{userId}
+        ORDER BY id DESC
+    </select>
+
+    <select id="selectById" resultType="com.aiagent.entity.AnalysisReport">
+        SELECT id, session_id, title, content, status, create_by, create_time, update_time
+        FROM analysis_report
+        WHERE id = #{id}
+    </select>
+
 </mapper>

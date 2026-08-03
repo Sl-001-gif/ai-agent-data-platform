@@ -78,7 +78,7 @@ public class AnalysisController {
     @PostMapping("/parse")
     public ResponseEntity<ApiResponse<Map<String, Object>>> parse(@Valid @RequestBody AnalysisParseRequest request) {
         RecognizedIntent intent = intentRecognizer.recognize(request.getText());
-        AnalysisPlan plan = analysisPlanner.buildPlan(intent);
+        AnalysisPlan plan = analysisPlanner.buildPlan(intent, request.getText());
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("intent", intent);
@@ -90,7 +90,7 @@ public class AnalysisController {
     @PostMapping("/sql")
     public ResponseEntity<ApiResponse<Map<String, Object>>> sql(@Valid @RequestBody AnalysisParseRequest request) {
         RecognizedIntent intent = intentRecognizer.recognize(request.getText());
-        AnalysisPlan plan = analysisPlanner.buildPlan(intent);
+        AnalysisPlan plan = analysisPlanner.buildPlan(intent, request.getText());
         SqlGenerator.GeneratedSql generated = sqlGenerator.generate(plan, intent);
         SqlValidator.ValidationResult validation = sqlValidator.validate(generated.sql(), plan.getTargetTable());
 
@@ -126,7 +126,7 @@ public class AnalysisController {
         data.put("intent", intent);
 
         start = System.currentTimeMillis();
-        AnalysisPlan plan = analysisPlanner.buildPlan(intent);
+        AnalysisPlan plan = analysisPlanner.buildPlan(intent, text);
         analysisTraceService.appendStep(session.getId(), 2, "PLAN", toJson(intent), toJson(plan),
                 "SUCCESS", null, System.currentTimeMillis() - start);
         data.put("plan", plan);

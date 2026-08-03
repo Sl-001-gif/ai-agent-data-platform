@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS dataset (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
     description TEXT,
+    business_scene VARCHAR(200) COMMENT '业务场景',
+    table_name VARCHAR(200) COMMENT '关联主表名',
+    sort INT DEFAULT 0 COMMENT '排序',
     db_type VARCHAR(20) DEFAULT 'MYSQL',
     db_host VARCHAR(255),
     db_port INT DEFAULT 3306,
@@ -53,6 +56,8 @@ CREATE TABLE IF NOT EXISTS table_schema (
     dataset_id BIGINT NOT NULL,
     table_name VARCHAR(200) NOT NULL,
     table_comment VARCHAR(500),
+    relation_desc VARCHAR(500) COMMENT '表关系说明',
+    sort INT DEFAULT 0 COMMENT '排序',
     status TINYINT DEFAULT 1,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -71,6 +76,10 @@ CREATE TABLE IF NOT EXISTS table_field (
     field_comment VARCHAR(500),
     business_meaning TEXT COMMENT '业务含义/字段语义',
     is_metric TINYINT DEFAULT 0 COMMENT '是否为指标字段',
+    semantic_type VARCHAR(20) COMMENT '语义类型：维度/指标/标识',
+    can_query TINYINT DEFAULT 1 COMMENT '是否可查询',
+    can_agg TINYINT DEFAULT 1 COMMENT '是否可聚合',
+    sort INT DEFAULT 0 COMMENT '排序',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (table_id) REFERENCES table_schema(id) ON DELETE CASCADE,
@@ -83,8 +92,13 @@ CREATE TABLE IF NOT EXISTS table_field (
 CREATE TABLE IF NOT EXISTS metric_definition (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
+    dataset_id BIGINT COMMENT '所属数据集ID',
+    metric_code VARCHAR(100) COMMENT '指标编码',
+    metric_type VARCHAR(20) DEFAULT '基础指标' COMMENT '指标类型：基础指标/计算指标',
     description TEXT,
     calculation_formula TEXT COMMENT '计算口径/SQL',
+    sql_expression TEXT COMMENT 'SQL表达式',
+    sort INT DEFAULT 0 COMMENT '排序',
     table_id BIGINT,
     field_id BIGINT,
     status TINYINT DEFAULT 1,
@@ -194,3 +208,102 @@ CREATE TABLE IF NOT EXISTS ai_data_source (
 -- ---------------------------------------------
 INSERT INTO sys_user (username, password, nickname, role, status)
 VALUES ('admin', '$2a$10$y7OYaEl6AAAIsJy9wxzrROo7b41zJHxWlgY19fb9N20t4lnBNShPG', '系统管理员', 'ADMIN', 1);
+
+-- ---------------------------------------------
+-- 分析意图规则配置表
+-- ---------------------------------------------
+CREATE TABLE IF NOT EXISTS analysis_intent_rule (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    intent_code VARCHAR(50) NOT NULL COMMENT '意图编码',
+    intent_name VARCHAR(50) NOT NULL COMMENT '意图名称',
+    keywords VARCHAR(500) NOT NULL COMMENT '关键词，逗号分隔',
+    priority INT DEFAULT 0 COMMENT '优先级，越小越先匹配',
+    status TINYINT DEFAULT 1 COMMENT '启用状态',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_intent_code (intent_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分析意图规则配置';
+
+-- ---------------------------------------------
+-- 分析计划配置表
+-- ---------------------------------------------
+CREATE TABLE IF NOT EXISTS analysis_plan_config (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    intent_code VARCHAR(50) NOT NULL COMMENT '意图编码',
+    is_gov TINYINT DEFAULT 0 COMMENT '是否政务类计划',
+    table_name VARCHAR(100) NOT NULL COMMENT '目标表名',
+    metrics VARCHAR(500) NOT NULL COMMENT '指标，逗号分隔',
+    dimensions VARCHAR(500) NOT NULL COMMENT '维度，逗号分隔',
+    chart_type VARCHAR(20) DEFAULT 'table' COMMENT '图表类型',
+    time_range VARCHAR(50) DEFAULT '近30天' COMMENT '默认时间范围',
+    sql_template TEXT COMMENT '规则 SQL 模板，{timeRange} 占位',
+    status TINYINT DEFAULT 1,
+    sort INT DEFAULT 0,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_intent (intent_code, is_gov)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分析计划配置';
+
+-- ---------------------------------------------
+-- 分析意图规则种子（与内置回退逐字一致）
+-- ---------------------------------------------
+INSERT INTO analysis_intent_rule (intent_code, intent_name, keywords, priority, status) VALUES
+('USER_PROFILE', '用户画像', '用户画像,人群画像,客户画像,画像,人群,偏好,特征', 1, 1),
+('ANOMALY', '异常归因', '下降,下跌,异常,原因,归因,波动,为什么', 2, 1),
+('RETENTION', '留存转化', '留存,转化,复购,流失', 3, 1),
+('COMPARISON', '对比分析', '对比,比较,差异', 4, 1),
+('STRUCTURE', '占比结构', '占比,结构,构成,比例,份额', 5, 1),
+('RANKING', '排名分析', '排名,排行,最好,最差,top10,top 10,前10', 6, 1),
+('SALES_TREND', '销售趋势', '销售,销售额,销量,营收,收入,趋势,走势,增长', 7, 1);
+
+-- ---------------------------------------------
+-- 分析计划配置种子（普通 8 条 + 政务 8 条）
+-- ---------------------------------------------
+INSERT INTO analysis_plan_config (intent_code, is_gov, table_name, metrics, dimensions, chart_type, time_range, sql_template, status, sort) VALUES
+('SALES_TREND', 0, 'order_info', '订单量,销售额', '日期', 'line', '近30天',
+ 'SELECT order_date, SUM(order_count) AS order_count, SUM(sales_amount) AS sales_amount FROM order_info WHERE order_date >= {timeRange} GROUP BY order_date ORDER BY order_date', 1, 1),
+('USER_PROFILE', 0, 'user_info', '新增用户数,活跃用户数', '年龄段,城市', 'bar', '近30天',
+ 'SELECT age_group, city, SUM(new_user_count) AS new_user_count, SUM(active_user_count) AS active_user_count FROM user_info GROUP BY age_group, city', 1, 2),
+('COMPARISON', 0, 'order_info', '销售额,订单量', '区域,渠道', 'bar', '近30天',
+ 'SELECT region, channel, SUM(sales_amount) AS sales_amount, SUM(order_count) AS order_count FROM order_info GROUP BY region, channel', 1, 3),
+('RANKING', 0, 'product_info', '销量,销售额', '品类', 'bar', '近30天',
+ 'SELECT category, SUM(sales_volume) AS sales_volume, SUM(sales_amount) AS sales_amount FROM product_info GROUP BY category ORDER BY SUM(sales_volume) DESC LIMIT 10', 1, 4),
+('STRUCTURE', 0, 'order_info', '销售额', '品类', 'pie', '近30天',
+ 'SELECT category, SUM(sales_amount) AS sales_amount FROM order_info GROUP BY category', 1, 5),
+('RETENTION', 0, 'user_info', '留存率,新增用户数', '日期', 'line', '近30天',
+ 'SELECT register_date, AVG(retention_rate) AS retention_rate FROM user_info GROUP BY register_date ORDER BY register_date', 1, 6),
+('ANOMALY', 0, 'order_info', '订单量,销售额', '日期,区域', 'table', '近30天',
+ 'SELECT order_date, region, SUM(order_count) AS order_count, SUM(sales_amount) AS sales_amount FROM order_info GROUP BY order_date, region ORDER BY order_date DESC LIMIT 30', 1, 7),
+('GENERAL', 0, 'order_info', '订单量,销售额,客单价', '日期,区域', 'table', '近30天',
+ 'SELECT order_date, region, SUM(order_count) AS order_count, SUM(sales_amount) AS sales_amount, ROUND(SUM(sales_amount) / NULLIF(SUM(order_count), 0), 2) AS avg_order_amount FROM order_info GROUP BY order_date, region ORDER BY order_date', 1, 8),
+('SALES_TREND', 1, 'GOV_INFO_RECORD', '发文量,日均发文量', '发布日期', 'line', '近30天',
+ 'SELECT DATE_FORMAT(publish_date,''%Y-%m'') AS month, COUNT(*) AS doc_count FROM gov_info_record WHERE publish_date >= {timeRange} GROUP BY month ORDER BY month', 1, 1),
+('RANKING', 1, 'GOV_INFO_RECORD', '发文量', '公开单位', 'bar', '近30天',
+ 'SELECT COALESCE(NULLIF(publish_unit,''''), category) AS unit, COUNT(*) AS doc_count FROM gov_info_record GROUP BY unit ORDER BY doc_count DESC LIMIT 10', 1, 2),
+('STRUCTURE', 1, 'GOV_INFO_RECORD', '发文量', '公开类目', 'pie', '近30天',
+ 'SELECT category, COUNT(*) AS doc_count FROM gov_info_record GROUP BY category', 1, 3),
+('USER_PROFILE', 1, 'GOV_INFO_RECORD', '发文量,类目占比', '公开类目,公开单位', 'table', '近30天',
+ 'SELECT category, publish_unit, COUNT(*) AS doc_count FROM gov_info_record GROUP BY category, publish_unit', 1, 4),
+('COMPARISON', 1, 'GOV_INFO_RECORD', '发文量,类目占比', '公开类目,公开单位', 'table', '近30天',
+ 'SELECT category, publish_unit, COUNT(*) AS doc_count FROM gov_info_record GROUP BY category, publish_unit', 1, 5),
+('RETENTION', 1, 'GOV_INFO_RECORD', '发文量,类目占比', '公开类目,公开单位', 'table', '近30天',
+ 'SELECT category, publish_unit, COUNT(*) AS doc_count FROM gov_info_record GROUP BY category, publish_unit', 1, 6),
+('ANOMALY', 1, 'GOV_INFO_RECORD', '发文量,类目占比', '公开类目,公开单位', 'table', '近30天',
+ 'SELECT category, publish_unit, COUNT(*) AS doc_count FROM gov_info_record GROUP BY category, publish_unit', 1, 7),
+('GENERAL', 1, 'GOV_INFO_RECORD', '发文量,类目占比', '公开类目,公开单位', 'table', '近30天',
+ 'SELECT category, publish_unit, COUNT(*) AS doc_count FROM gov_info_record GROUP BY category, publish_unit', 1, 8);
+
+-- ---------------------------------------------
+-- AI 模型配置种子（key 不入库，环境变量 AI_API_KEY 优先）
+-- ---------------------------------------------
+INSERT INTO ai_model_config (name, model_name, endpoint, max_tokens, temperature, status) VALUES
+('text-deepseek', 'deepseek-chat', 'https://api.deepseek.com/v1', 2048, 0.2, 1),
+('sql-deepseek', 'deepseek-chat', 'https://api.deepseek.com/v1', 2048, 0.2, 1),
+('report-deepseek', 'deepseek-chat', 'https://api.deepseek.com/v1', 4096, 0.7, 1);
+
+-- ---------------------------------------------
+-- Prompt 模板种子（基线，供管理端查看与维护）
+-- ---------------------------------------------
+INSERT INTO prompt_template (name, type, content, version, status) VALUES
+('SQL 生成基线', 'SQL', '你是资深数据分析师，根据给定的数据表元数据生成一条只读 SELECT SQL。只输出 SQL 本身，不要任何解释、不要 markdown 代码块、不要分号结尾。', 1, 1),
+('解读生成基线', 'INTERPRET', '你是资深数据分析师。根据给定的查询结果与指标口径，用中文输出不超过150字的分析结论，包含关键数字与趋势、占比或对比要点；只输出结论正文，不要标题、不要 markdown、不要多余解释。', 1, 1);

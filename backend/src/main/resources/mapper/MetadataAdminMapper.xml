@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiagent.mapper.MetadataAdminMapper">
+
+    <insert id="insertDataset" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO dataset (name, description, business_scene, table_name, sort,
+                             db_type, db_host, db_port, db_name, db_username, db_password, status, create_by)
+        VALUES (#{name}, #{description}, #{businessScene}, #{tableName}, #{sort},
+                #{dbType}, #{dbHost}, #{dbPort}, #{dbName}, #{dbUsername}, #{dbPassword}, #{status}, #{createBy})
+    </insert>
+
+    <update id="updateDataset">
+        UPDATE dataset
+        SET name = #{name}, description = #{description}, business_scene = #{businessScene},
+            table_name = #{tableName}, sort = #{sort}, db_type = #{dbType}, db_host = #{dbHost},
+            db_port = #{dbPort}, db_name = #{dbName}, db_username = #{dbUsername},
+            db_password = #{dbPassword}, status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteDataset">DELETE FROM dataset WHERE id = #{id}</delete>
+
+    <select id="selectDatasetById" resultType="com.aiagent.entity.Dataset">
+        SELECT * FROM dataset WHERE id = #{id}
+    </select>
+
+    <select id="selectDatasetList" resultType="com.aiagent.entity.Dataset">
+        SELECT * FROM dataset ORDER BY sort, id
+    </select>
+
+    <insert id="insertTable" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO table_schema (dataset_id, table_name, table_comment, relation_desc, sort, status)
+        VALUES (#{datasetId}, #{tableName}, #{tableComment}, #{relationDesc}, #{sort}, #{status})
+    </insert>
+
+    <update id="updateTable">
+        UPDATE table_schema
+        SET dataset_id = #{datasetId}, table_name = #{tableName}, table_comment = #{tableComment},
+            relation_desc = #{relationDesc}, sort = #{sort}, status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteTable">DELETE FROM table_schema WHERE id = #{id}</delete>
+
+    <select id="selectTableById" resultType="com.aiagent.entity.TableSchema">
+        SELECT * FROM table_schema WHERE id = #{id}
+    </select>
+
+    <select id="selectTableList" resultType="com.aiagent.entity.TableSchema">
+        SELECT s.*, d.name AS dataset_name
+        FROM table_schema s LEFT JOIN dataset d ON s.dataset_id = d.id
+        ORDER BY s.sort, s.id
+    </select>
+
+    <insert id="insertField" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO table_field (table_id, field_name, field_type, field_comment, business_meaning,
+                                 is_metric, semantic_type, can_query, can_agg, sort)
+        VALUES (#{tableId}, #{fieldName}, #{fieldType}, #{fieldComment}, #{businessMeaning},
+                #{isMetric}, #{semanticType}, #{canQuery}, #{canAgg}, #{sort})
+    </insert>
+
+    <update id="updateField">
+        UPDATE table_field
+        SET table_id = #{tableId}, field_name = #{fieldName}, field_type = #{fieldType},
+            field_comment = #{fieldComment}, business_meaning = #{businessMeaning},
+            is_metric = #{isMetric}, semantic_type = #{semanticType},
+            can_query = #{canQuery}, can_agg = #{canAgg}, sort = #{sort}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteField">DELETE FROM table_field WHERE id = #{id}</delete>
+
+    <select id="selectFieldById" resultType="com.aiagent.entity.TableField">
+        SELECT * FROM table_field WHERE id = #{id}
+    </select>
+
+    <select id="selectFieldList" resultType="com.aiagent.entity.TableField">
+        SELECT f.*, t.table_name, d.name AS dataset_name
+        FROM table_field f
+        LEFT JOIN table_schema t ON f.table_id = t.id
+        LEFT JOIN dataset d ON t.dataset_id = d.id
+        ORDER BY f.sort, f.id
+    </select>
+
+    <insert id="insertMetric" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO metric_definition (name, description, dataset_id, metric_code, metric_type,
+                                       calculation_formula, sql_expression, sort, table_id, field_id, status)
+        VALUES (#{name}, #{description}, #{datasetId}, #{metricCode}, #{metricType},
+                #{calculationFormula}, #{sqlExpression}, #{sort}, #{tableId}, #{fieldId}, #{status})
+    </insert>
+
+    <update id="updateMetric">
+        UPDATE metric_definition
+        SET name = #{name}, description = #{description}, dataset_id = #{datasetId},
+            metric_code = #{metricCode}, metric_type = #{metricType},
+            calculation_formula = #{calculationFormula}, sql_expression = #{sqlExpression},
+            sort = #{sort}, table_id = #{tableId}, field_id = #{fieldId}, status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteMetric">DELETE FROM metric_definition WHERE id = #{id}</delete>
+
+    <select id="selectMetricById" resultType="com.aiagent.entity.MetricDefinition">
+        SELECT * FROM metric_definition WHERE id = #{id}
+    </select>
+
+    <select id="selectMetricList" resultType="com.aiagent.entity.MetricDefinition">
+        SELECT m.*, d.name AS dataset_name
+        FROM metric_definition m LEFT JOIN dataset d ON m.dataset_id = d.id
+        ORDER BY m.sort, m.id
+    </select>
+
+</mapper>

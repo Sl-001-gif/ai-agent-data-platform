@@ -84,7 +84,10 @@ public class MetadataService {
             if (metricName.isEmpty()) {
                 metricName = cell(metric, "name");
             }
-            String formula = cell(metric, "formula");
+            String formula = cell(metric, "calculation_formula");
+            if (formula.isEmpty()) {
+                formula = cell(metric, "formula");
+            }
             String description = cell(metric, "description");
             sb.append("- ").append(metricName).append(" = ").append(formula);
             if (!description.isEmpty()) {
