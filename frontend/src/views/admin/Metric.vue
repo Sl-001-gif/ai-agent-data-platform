@@ -10,13 +10,32 @@
           </div>
         </div>
       </template>
+      <el-tabs v-model="activeCategory" type="card" style="margin-bottom: 8px;">
+        <el-tab-pane label="全部" name="all" />
+        <el-tab-pane v-for="c in categories" :key="c.id" :name="String(c.id)" :label="c.name" />
+        <el-tab-pane label="未分类" name="none" />
+      </el-tabs>
       <el-table :data="filteredRows" v-loading="loading" border stripe size="small">
         <el-table-column prop="datasetName" label="数据集" min-width="130" />
         <el-table-column prop="name" label="指标名称" min-width="120" />
         <el-table-column prop="metricCode" label="指标编码" min-width="110" />
         <el-table-column prop="metricType" label="指标类型" width="90" />
-        <el-table-column prop="calculationFormula" label="口径公式" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="description" label="业务含义" min-width="160" show-overflow-tooltip />
+        <el-table-column label="口径公式" min-width="180">
+          <template #default="{ row }">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ row.calculationFormula }}</span>
+              <el-button size="small" type="primary" link @click="detailRef.open(row.calculationFormula)">详情</el-button>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="业务含义" min-width="180">
+          <template #default="{ row }">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ row.description }}</span>
+              <el-button size="small" type="primary" link @click="detailRef.open(row.description)">详情</el-button>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="80">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? "启用" : "停用" }}</el-tag>
@@ -30,6 +49,7 @@
         </el-table-column>
       </el-table>
     </el-card>
+    <TextDetailDialog ref="detailRef" />
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑指标口径' : '新增指标口径'" width="560px" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
@@ -81,21 +101,40 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { listMetrics, createMetric, updateMetric, deleteMetric } from "@/api/metadata";
-import { listDatasets } from "@/api/metadata";
+import { listDatasets, listCategories } from "@/api/metadata";
+import TextDetailDialog from "@/components/TextDetailDialog.vue";
+const detailRef = ref(null);
 
 const loading = ref(false);
 const saving = ref(false);
 const rows = ref([]);
 const datasets = ref([]);
 const keyword = ref("");
-const dialogVisible = ref(false);
-const formRef = ref(null);
+const categories = ref([]);
+const activeCategory = ref("all");
 
 const filteredRows = computed(() => {
   const kw = keyword.value.trim().toLowerCase();
-  if (!kw) return rows.value;
-  return rows.value.filter((r) => (r.name || "").toLowerCase().includes(kw));
+  const a = activeCategory.value;
+  return rows.value.filter((r) => {
+    if (kw && !(r.name || "").toLowerCase().includes(kw)) return false;
+    if (!a || a === "all") return true;
+    if (a === "none") return !r.categoryId;
+    return String(r.categoryId) === a;
+  });
 });
+
+async function fetchCategories() {
+  try {
+    const res = await listCategories();
+    if (res.code === 200) categories.value = res.data || [];
+  } catch (e) {
+    ElMessage.error("加载分类失败");
+  }
+}
+const dialogVisible = ref(false);
+const formRef = ref(null);
+
 
 function defaultForm() {
   return {
@@ -218,6 +257,7 @@ async function handleDelete(row) {
 }
 
 onMounted(() => {
+  fetchCategories();
   fetchDatasets();
   fetchList();
 });

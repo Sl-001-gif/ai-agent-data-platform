@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class AnalysisTraceService {
 
-    private static final int MAX_OUTPUT_LENGTH = 5000;
+    private static final int MAX_OUTPUT_LENGTH = 60000;
 
     private final AnalysisSessionMapper sessionMapper;
     private final AnalysisStepMapper stepMapper;
@@ -69,6 +69,29 @@ public class AnalysisTraceService {
         if (value == null) {
             return null;
         }
-        return value.length() > MAX_OUTPUT_LENGTH ? value.substring(0, MAX_OUTPUT_LENGTH) : value;
+        if (value.length() <= MAX_OUTPUT_LENGTH) {
+            return value;
+        }
+        // ??????? JSON ??????????????/??????????
+        // ?? EXECUTE ??????????report ????????????422 ?????????
+        String cut = value.substring(0, MAX_OUTPUT_LENGTH);
+        int brace = cut.lastIndexOf('}');
+        if (brace < 0) {
+            return cut;
+        }
+        String base = cut.substring(0, brace + 1);
+        int opens = countChar(base, '[');
+        int closes = countChar(base, ']');
+        return opens > closes ? base + "]}" : base;
+    }
+
+    private static int countChar(String value, char ch) {
+        int n = 0;
+        for (int i = 0; i < value.length(); i++) {
+            if (value.charAt(i) == ch) {
+                n++;
+            }
+        }
+        return n;
     }
 }

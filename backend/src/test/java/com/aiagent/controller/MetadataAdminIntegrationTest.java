@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -55,6 +56,7 @@ class MetadataAdminIntegrationTest {
     private static final String TABLE_NAME = "l2_table_" + System.currentTimeMillis();
     private static final String FIELD_NAME = "l2_field_" + System.currentTimeMillis();
     private static final String METRIC_NAME = "L2指标_" + System.currentTimeMillis();
+    private static final String CATEGORY_NAME = "L2分类_" + System.currentTimeMillis();
 
     @Test
     @Order(1)
@@ -199,6 +201,104 @@ class MetadataAdminIntegrationTest {
                         .content(json(datasetPayload(null, "", "政务公开", "gov_info_record"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value(400));
+    }
+
+    // ---------- category ----------
+    @Test
+    @Order(10)
+    void categoryListShouldRequireAdmin() throws Exception {
+        mockMvc.perform(get("/api/admin/category"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/admin/category")
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @Order(11)
+    void categoryListShouldReturnSeededCategories() throws Exception {
+        JsonNode data = objectMapper.readTree(mockGet("/api/admin/category", adminToken)
+                .getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data");
+        assertTrue(data.size() >= 3, "种子分类应存在（政务/统计/演示）");
+    }
+
+    @Test
+    @Order(12)
+    void categoryCreateUpdateDeleteShouldSucceed() throws Exception {
+        Long categoryId = createId("/api/admin/category", adminToken,
+                categoryPayload(null, CATEGORY_NAME, "#123456", 9));
+        assertNotNull(categoryId);
+        assertTrue(listContains(mockGet("/api/admin/category", adminToken), "name", CATEGORY_NAME));
+
+        Map<String, Object> updated = categoryPayload(categoryId, CATEGORY_NAME + "_改", "#abcdef", 5);
+        mockMvc.perform(put("/api/admin/category/" + categoryId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(updated)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        assertTrue(listContains(mockGet("/api/admin/category", adminToken), "name", CATEGORY_NAME + "_改"));
+
+        mockMvc.perform(delete("/api/admin/category/" + categoryId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+        assertFalse(listContains(mockGet("/api/admin/category", adminToken), "name", CATEGORY_NAME + "_改"));
+    }
+
+    @Test
+    @Order(13)
+    void datasetListShouldReturnCategoryInfo() throws Exception {
+        JsonNode data = objectMapper.readTree(mockGet("/api/admin/dataset", adminToken)
+                .getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data");
+        JsonNode gov = null;
+        for (JsonNode node : data) {
+            if ("邵阳政务信息公开数据".equals(node.path("name").asText())) {
+                gov = node;
+                break;
+            }
+        }
+        assertNotNull(gov, "种子数据集应存在");
+        assertTrue(gov.path("categoryId").isNumber(), "数据集应带 categoryId");
+        assertEquals("政务数据", gov.path("categoryName").asText());
+    }
+
+    @Test
+    @Order(14)
+    void deleteCategoryShouldUnbindDatasets() throws Exception {
+        Long tempCat = createId("/api/admin/category", adminToken,
+                categoryPayload(null, "L2临时分类_" + System.currentTimeMillis(), "#ff0000", 9));
+        Map<String, Object> ds = datasetPayload(null, "L2分类关联_" + System.currentTimeMillis(), "测试", "l2_cat_ds");
+        ds.put("categoryId", tempCat);
+        Long dsId = createId("/api/admin/dataset", adminToken, ds);
+
+        mockMvc.perform(delete("/api/admin/category/" + tempCat)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        JsonNode data = objectMapper.readTree(mockGet("/api/admin/dataset", adminToken)
+                .getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data");
+        boolean unbound = false;
+        for (JsonNode node : data) {
+            if (node.path("id").asLong() == dsId) {
+                unbound = node.path("categoryId").isNull() || node.path("categoryId").isMissingNode();
+                break;
+            }
+        }
+        assertTrue(unbound, "删除分类后数据集应回到未分类");
+        mockMvc.perform(delete("/api/admin/dataset/" + dsId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+    }
+
+    private Map<String, Object> categoryPayload(Long id, String name, String color, Integer sort) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("id", id);
+        body.put("name", name);
+        body.put("color", color);
+        body.put("sort", sort);
+        return body;
     }
 
     private MvcResult mockGet(String path, String token) throws Exception {

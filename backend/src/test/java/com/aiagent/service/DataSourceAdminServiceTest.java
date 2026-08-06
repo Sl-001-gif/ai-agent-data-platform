@@ -55,6 +55,7 @@ class DataSourceAdminServiceTest {
         assertTrue(url.contains("characterEncoding=utf8"));
         assertTrue(url.contains("connectTimeout=3000"));
         assertTrue(url.contains("socketTimeout=3000"));
+        assertTrue(url.contains("allowPublicKeyRetrieval=true"));
     }
 
     @Test

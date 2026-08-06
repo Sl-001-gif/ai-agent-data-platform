@@ -4,6 +4,8 @@ import com.aiagent.entity.AnalysisSession;
 import com.aiagent.entity.AnalysisStep;
 import com.aiagent.mapper.AnalysisSessionMapper;
 import com.aiagent.mapper.AnalysisStepMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -92,16 +94,40 @@ class AnalysisTraceServiceTest {
     }
 
     @Test
-    void appendStep_shouldTruncateOutputOver5000Chars() {
-        service.appendStep(5L, 1, "INTENT", "in", "x".repeat(6000), "SUCCESS", null, 12L);
+    void appendStep_shouldTruncateOutputOverLimit() {
+        service.appendStep(5L, 1, "INTENT", "in", "x".repeat(70000), "SUCCESS", null, 12L);
 
         ArgumentCaptor<AnalysisStep> captor = ArgumentCaptor.forClass(AnalysisStep.class);
         verify(stepMapper).insert(captor.capture());
         AnalysisStep step = captor.getValue();
-        assertEquals(5000, step.getOutputData().length());
+        assertTrue(step.getOutputData().length() <= 60000);
         assertEquals(5L, step.getSessionId());
         assertEquals("INTENT", step.getStepType());
         assertEquals("SUCCESS", step.getStatus());
         assertEquals(12L, step.getDurationMs());
+    }
+
+    @Test
+    void appendStep_shouldKeepJsonValidWhenTruncatingLargeOutput() throws Exception {
+        StringBuilder sb = new StringBuilder("{\"columns\":[\"d\"],\"rows\":[");
+        for (int i = 0; i < 9000; i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append("{\"d\":").append(i).append("}");
+        }
+        sb.append("],\"rowCount\":9000}");
+        String big = sb.toString();
+        assertTrue(big.length() > 60000);
+
+        service.appendStep(5L, 5, "EXECUTE", "sql", big, "SUCCESS", null, 12L);
+
+        ArgumentCaptor<AnalysisStep> captor = ArgumentCaptor.forClass(AnalysisStep.class);
+        verify(stepMapper).insert(captor.capture());
+        String out = captor.getValue().getOutputData();
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode node = mapper.readTree(out);
+        assertTrue(node.get("rows").size() > 0);
+        assertTrue(node.get("rows").size() < 9000);
     }
 }

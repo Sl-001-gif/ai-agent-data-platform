@@ -20,6 +20,8 @@ public class TableField {
     private Integer canQuery;
     private Integer canAgg;
     private Integer sort;
+    private Long categoryId;
+    private String categoryName;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

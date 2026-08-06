@@ -7,7 +7,12 @@
           <el-button type="primary" size="small" @click="openCreate">新增数据表</el-button>
         </div>
       </template>
-      <el-table :data="rows" v-loading="loading" border stripe size="small">
+      <el-tabs v-model="activeCategory" type="card" style="margin-bottom: 8px;">
+        <el-tab-pane label="全部" name="all" />
+        <el-tab-pane v-for="c in categories" :key="c.id" :name="String(c.id)" :label="c.name" />
+        <el-tab-pane label="未分类" name="none" />
+      </el-tabs>
+      <el-table :data="filteredRows" v-loading="loading" border stripe size="small">
         <el-table-column prop="datasetName" label="所属数据集" min-width="150" />
         <el-table-column prop="tableName" label="表名" min-width="140" />
         <el-table-column prop="tableComment" label="表说明" min-width="130" />
@@ -62,15 +67,35 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, computed, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { listDataTables, createDataTable, updateDataTable, deleteDataTable } from "@/api/metadata";
-import { listDatasets } from "@/api/metadata";
+import { listDatasets, listCategories } from "@/api/metadata";
 
 const loading = ref(false);
 const saving = ref(false);
 const rows = ref([]);
 const datasets = ref([]);
+const categories = ref([]);
+const activeCategory = ref("all");
+
+const filteredRows = computed(() => {
+  const a = activeCategory.value;
+  return rows.value.filter((r) => {
+    if (!a || a === "all") return true;
+    if (a === "none") return !r.categoryId;
+    return String(r.categoryId) === a;
+  });
+});
+
+async function fetchCategories() {
+  try {
+    const res = await listCategories();
+    if (res.code === 200) categories.value = res.data || [];
+  } catch (e) {
+    ElMessage.error("加载分类失败");
+  }
+}
 const dialogVisible = ref(false);
 const formRef = ref(null);
 
@@ -180,6 +205,7 @@ async function handleDelete(row) {
 }
 
 onMounted(() => {
+  fetchCategories();
   fetchDatasets();
   fetchList();
 });

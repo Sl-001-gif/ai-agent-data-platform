@@ -70,7 +70,7 @@ public class DataSourceAdminService {
     String buildJdbcUrl(DataSourceRequest request) {
         return "jdbc:mysql://" + request.getHost() + ":" + request.getPort() + "/" + request.getDatabaseName()
                 + "?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8"
-                + "&connectTimeout=3000&socketTimeout=3000";
+                + "&connectTimeout=3000&socketTimeout=3000&allowPublicKeyRetrieval=true";
     }
 
     Connection openConnection(String url, String username, String password) throws SQLException {

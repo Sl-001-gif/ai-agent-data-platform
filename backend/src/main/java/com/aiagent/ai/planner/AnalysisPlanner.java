@@ -42,7 +42,8 @@ public class AnalysisPlanner {
                 && intent.getMatchedKeywords().contains("政务公开");
         AnalysisConfigService.PlanConfigSpec spec = resolveSpec(type, govRelated);
         DemoMetadataCatalog.DemoTable table = metadataCatalog.getTable(spec.tableName());
-        String tableComment = govRelated ? "政府信息公开记录" : (table == null ? spec.tableName() : table.comment());
+        String tableComment = table != null ? table.comment()
+                : govRelated ? "政府信息公开记录" : spec.tableName();
         String timeRange = TimeRangeParser.extract(question);
         if (timeRange == null) {
             timeRange = spec.timeRange() == null || spec.timeRange().isBlank() ? DEFAULT_TIME_RANGE : spec.timeRange();

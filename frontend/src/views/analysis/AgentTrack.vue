@@ -18,12 +18,25 @@
           </template>
         </el-table-column>
         <el-table-column prop="durationMs" label="耗时(ms)" width="100" />
-        <el-table-column label="输出预览" min-width="220" show-overflow-tooltip>
-          <template #default="{ row }">{{ preview(row.outputData) }}</template>
+        <el-table-column label="输出预览" min-width="240">
+          <template #default="{ row }">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ preview(row.outputData) }}</span>
+              <el-button size="small" type="primary" link @click="openDetail(row)">详情</el-button>
+            </div>
+          </template>
         </el-table-column>
         <el-table-column prop="errorMessage" label="错误信息" min-width="160" show-overflow-tooltip />
       </el-table>
     </el-card>
+
+    <el-dialog v-model="detailVisible" title="步骤输出详情" width="760px" top="5vh">
+      <pre style="max-height: 65vh; overflow: auto; background: #f5f7fa; padding: 12px; border-radius: 4px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; margin: 0;">{{ detailText }}</pre>
+      <template #footer>
+        <el-button type="primary" @click="copyDetail">复制</el-button>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -36,11 +49,36 @@ const sessions = ref([]);
 const steps = ref([]);
 const selectedId = ref(null);
 const loading = ref(false);
+const detailVisible = ref(false);
+const detailText = ref("");
 
 function preview(data) {
   if (!data) return "-";
   const text = String(data);
   return text.length > 80 ? text.slice(0, 80) + "..." : text;
+}
+
+function openDetail(row) {
+  let text = row.outputData || "";
+  if (text) {
+    try {
+      const obj = JSON.parse(text);
+      text = JSON.stringify(obj, null, 2);
+    } catch (e) {
+      // 非 JSON 内容按原文展示
+    }
+  }
+  detailText.value = text || "-";
+  detailVisible.value = true;
+}
+
+async function copyDetail() {
+  try {
+    await navigator.clipboard.writeText(detailText.value);
+    ElMessage.success("已复制");
+  } catch (e) {
+    ElMessage.error("复制失败，请手动选择");
+  }
 }
 
 async function fetchSessions() {

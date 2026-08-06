@@ -14,7 +14,7 @@
           <template #default="{ row }">{{ row.host }}:{{ row.port }}</template>
         </el-table-column>
         <el-table-column prop="databaseName" label="数据库" min-width="120" />
-        <el-table-column prop="username" label="用户名" min-width="100" />
+        <el-table-column prop="username" label="数据库用户" min-width="100" />
         <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip />
         <el-table-column label="创建时间" min-width="150">
           <template #default="{ row }">{{ row.createTime || "-" }}</template>
@@ -48,11 +48,11 @@
         <el-form-item label="数据库名" prop="databaseName">
           <el-input v-model="form.databaseName" placeholder="如：ai_agent_data" />
         </el-form-item>
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="如：root" />
+        <el-form-item label="数据库用户名" prop="username">
+          <el-input v-model="form.username" placeholder="MySQL 账号，如：root" />
         </el-form-item>
-        <el-form-item label="密码" prop="password">
-          <el-input v-model="form.password" type="password" show-password placeholder="请输入密码" />
+        <el-form-item label="数据库密码" prop="password">
+          <el-input v-model="form.password" type="password" show-password placeholder="数据库密码" />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" :rows="2" placeholder="可选" />

@@ -5,9 +5,9 @@
 
     <insert id="insertDataset" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO dataset (name, description, business_scene, table_name, sort,
-                             db_type, db_host, db_port, db_name, db_username, db_password, status, create_by)
+                             db_type, db_host, db_port, db_name, db_username, db_password, status, create_by, category_id)
         VALUES (#{name}, #{description}, #{businessScene}, #{tableName}, #{sort},
-                #{dbType}, #{dbHost}, #{dbPort}, #{dbName}, #{dbUsername}, #{dbPassword}, #{status}, #{createBy})
+                #{dbType}, #{dbHost}, #{dbPort}, #{dbName}, #{dbUsername}, #{dbPassword}, #{status}, #{createBy}, #{categoryId})
     </insert>
 
     <update id="updateDataset">
@@ -15,7 +15,7 @@
         SET name = #{name}, description = #{description}, business_scene = #{businessScene},
             table_name = #{tableName}, sort = #{sort}, db_type = #{dbType}, db_host = #{dbHost},
             db_port = #{dbPort}, db_name = #{dbName}, db_username = #{dbUsername},
-            db_password = #{dbPassword}, status = #{status}
+            db_password = #{dbPassword}, category_id = #{categoryId}, status = #{status}
         WHERE id = #{id}
     </update>
 
@@ -26,7 +26,9 @@
     </select>
 
     <select id="selectDatasetList" resultType="com.aiagent.entity.Dataset">
-        SELECT * FROM dataset ORDER BY sort, id
+        SELECT d.*, c.name AS category_name
+        FROM dataset d LEFT JOIN data_category c ON d.category_id = c.id
+        ORDER BY d.sort, d.id
     </select>
 
     <insert id="insertTable" useGeneratedKeys="true" keyProperty="id">
@@ -48,8 +50,10 @@
     </select>
 
     <select id="selectTableList" resultType="com.aiagent.entity.TableSchema">
-        SELECT s.*, d.name AS dataset_name
-        FROM table_schema s LEFT JOIN dataset d ON s.dataset_id = d.id
+        SELECT s.*, d.name AS dataset_name, c.id AS category_id, c.name AS category_name
+        FROM table_schema s
+        LEFT JOIN dataset d ON s.dataset_id = d.id
+        LEFT JOIN data_category c ON d.category_id = c.id
         ORDER BY s.sort, s.id
     </select>
 
@@ -76,10 +80,11 @@
     </select>
 
     <select id="selectFieldList" resultType="com.aiagent.entity.TableField">
-        SELECT f.*, t.table_name, d.name AS dataset_name
+        SELECT f.*, t.table_name, d.name AS dataset_name, c.id AS category_id, c.name AS category_name
         FROM table_field f
         LEFT JOIN table_schema t ON f.table_id = t.id
         LEFT JOIN dataset d ON t.dataset_id = d.id
+        LEFT JOIN data_category c ON d.category_id = c.id
         ORDER BY f.sort, f.id
     </select>
 
@@ -106,9 +111,35 @@
     </select>
 
     <select id="selectMetricList" resultType="com.aiagent.entity.MetricDefinition">
-        SELECT m.*, d.name AS dataset_name
+        SELECT m.*, d.name AS dataset_name, c.id AS category_id, c.name AS category_name
         FROM metric_definition m LEFT JOIN dataset d ON m.dataset_id = d.id
+        LEFT JOIN data_category c ON d.category_id = c.id
         ORDER BY m.sort, m.id
     </select>
 
+    <insert id="insertCategory" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO data_category (name, color, sort) VALUES (#{name}, #{color}, #{sort})
+    </insert>
+
+    <update id="updateCategory">
+        UPDATE data_category SET name = #{name}, color = #{color}, sort = #{sort} WHERE id = #{id}
+    </update>
+
+    <update id="clearCategoryRefs">
+        UPDATE dataset SET category_id = NULL WHERE category_id = #{id}
+    </update>
+
+    <delete id="deleteCategory">DELETE FROM data_category WHERE id = #{id}</delete>
+
+    <select id="selectCategoryList" resultType="com.aiagent.entity.DataCategory">
+        SELECT id, name, color, sort, create_time, update_time FROM data_category ORDER BY sort, id
+    </select>
+
+    <select id="selectCategoryById" resultType="com.aiagent.entity.DataCategory">
+        SELECT id, name, color, sort, create_time, update_time FROM data_category WHERE id = #{id}
+    </select>
+
+    <select id="selectCategoryByName" resultType="com.aiagent.entity.DataCategory">
+        SELECT id, name, color, sort, create_time, update_time FROM data_category WHERE name = #{name}
+    </select>
 </mapper>

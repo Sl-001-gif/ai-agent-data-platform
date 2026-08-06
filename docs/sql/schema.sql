@@ -29,6 +29,18 @@ CREATE TABLE IF NOT EXISTS sys_user (
 -- ---------------------------------------------
 -- 数据集配置表
 -- ---------------------------------------------
+-- ---------------------------------------------
+-- 数据分类表
+-- ---------------------------------------------
+CREATE TABLE IF NOT EXISTS data_category (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE COMMENT '分类名称',
+    color VARCHAR(20) DEFAULT '#409eff' COMMENT '标签颜色',
+    sort INT DEFAULT 0 COMMENT '排序',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='数据分类表';
+
 CREATE TABLE IF NOT EXISTS dataset (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(200) NOT NULL,
@@ -43,6 +55,7 @@ CREATE TABLE IF NOT EXISTS dataset (
     db_username VARCHAR(100),
     db_password VARCHAR(255),
     status TINYINT DEFAULT 1,
+    category_id BIGINT NULL COMMENT '所属分类 ID（data_category.id）',
     create_by BIGINT,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -59,6 +72,7 @@ CREATE TABLE IF NOT EXISTS table_schema (
     relation_desc VARCHAR(500) COMMENT '表关系说明',
     sort INT DEFAULT 0 COMMENT '排序',
     status TINYINT DEFAULT 1,
+    category_id BIGINT NULL COMMENT '所属分类 ID（data_category.id）',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (dataset_id) REFERENCES dataset(id) ON DELETE CASCADE,
@@ -102,6 +116,7 @@ CREATE TABLE IF NOT EXISTS metric_definition (
     table_id BIGINT,
     field_id BIGINT,
     status TINYINT DEFAULT 1,
+    category_id BIGINT NULL COMMENT '所属分类 ID（data_category.id）',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='指标口径定义表';
@@ -167,6 +182,7 @@ CREATE TABLE IF NOT EXISTS ai_model_config (
     max_tokens INT DEFAULT 4096,
     temperature DECIMAL(3,2) DEFAULT 0.7,
     status TINYINT DEFAULT 1,
+    category_id BIGINT NULL COMMENT '所属分类 ID（data_category.id）',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 模型配置表';
@@ -181,6 +197,7 @@ CREATE TABLE IF NOT EXISTS prompt_template (
     content TEXT NOT NULL,
     version INT DEFAULT 1,
     status TINYINT DEFAULT 1,
+    category_id BIGINT NULL COMMENT '所属分类 ID（data_category.id）',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Prompt 模板表';
@@ -238,6 +255,7 @@ CREATE TABLE IF NOT EXISTS analysis_plan_config (
     time_range VARCHAR(50) DEFAULT '近30天' COMMENT '默认时间范围',
     sql_template TEXT COMMENT '规则 SQL 模板，{timeRange} 占位',
     status TINYINT DEFAULT 1,
+    category_id BIGINT NULL COMMENT '所属分类 ID（data_category.id）',
     sort INT DEFAULT 0,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

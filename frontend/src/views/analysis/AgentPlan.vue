@@ -39,7 +39,14 @@
               </template>
             </el-table-column>
             <el-table-column prop="durationMs" label="耗时(ms)" width="100" />
-            <el-table-column prop="errorMessage" label="错误信息" min-width="160" show-overflow-tooltip />
+            <el-table-column label="错误信息" min-width="180">
+              <template #default="{ row }">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ row.errorMessage }}</span>
+                  <el-button v-if="row.errorMessage" size="small" type="primary" link @click="detailRef.open(row.errorMessage)">详情</el-button>
+                </div>
+              </template>
+            </el-table-column>
           </el-table>
         </el-card>
         <el-card v-else>
@@ -47,6 +54,7 @@
         </el-card>
       </el-col>
     </el-row>
+    <TextDetailDialog ref="detailRef" />
   </div>
 </template>
 
@@ -55,6 +63,8 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { listSessions, listSessionSteps } from "@/api/history";
+import TextDetailDialog from "@/components/TextDetailDialog.vue";
+const detailRef = ref(null);
 
 const router = useRouter();
 const plans = ref([]);

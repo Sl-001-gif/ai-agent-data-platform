@@ -51,3 +51,16 @@ export function updateMetric(id, data) {
 export function deleteMetric(id) {
   return request.delete("/admin/metric/" + id);
 }
+
+export function listCategories() {
+  return request.get("/admin/category");
+}
+export function createCategory(data) {
+  return request.post("/admin/category", data);
+}
+export function updateCategory(id, data) {
+  return request.put("/admin/category/" + id, data);
+}
+export function deleteCategory(id) {
+  return request.delete("/admin/category/" + id);
+}

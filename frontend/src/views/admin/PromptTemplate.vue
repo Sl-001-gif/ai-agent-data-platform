@@ -14,7 +14,14 @@
             <el-tag>{{ row.type || "-" }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="content" label="模板内容" min-width="320" show-overflow-tooltip />
+        <el-table-column label="模板内容" min-width="320">
+          <template #default="{ row }">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ row.content }}</span>
+              <el-button size="small" type="primary" link @click="detailRef.open(row.content)">详情</el-button>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="version" label="版本" width="70" />
         <el-table-column label="状态" width="80">
           <template #default="{ row }">
@@ -29,6 +36,7 @@
         </el-table-column>
       </el-table>
     </el-card>
+    <TextDetailDialog ref="detailRef" />
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑模板' : '新增模板'" width="620px" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
@@ -69,6 +77,8 @@
 import { ref, reactive, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { listPrompts, createPrompt, updatePrompt, deletePrompt } from "@/api/aiConfig";
+import TextDetailDialog from "@/components/TextDetailDialog.vue";
+const detailRef = ref(null);
 
 const loading = ref(false);
 const saving = ref(false);

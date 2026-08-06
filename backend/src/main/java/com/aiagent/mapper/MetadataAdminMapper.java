@@ -1,6 +1,7 @@
 package com.aiagent.mapper;
 
 import com.aiagent.entity.Dataset;
+import com.aiagent.entity.DataCategory;
 import com.aiagent.entity.MetricDefinition;
 import com.aiagent.entity.TableField;
 import com.aiagent.entity.TableSchema;
@@ -51,4 +52,17 @@ public interface MetadataAdminMapper {
     MetricDefinition selectMetricById(Long id);
 
     List<MetricDefinition> selectMetricList();
+    List<DataCategory> selectCategoryList();
+
+    DataCategory selectCategoryById(Long id);
+
+    DataCategory selectCategoryByName(String name);
+
+    int insertCategory(DataCategory category);
+
+    int updateCategory(DataCategory category);
+
+    int deleteCategory(Long id);
+
+    int clearCategoryRefs(Long id);
 }

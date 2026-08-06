@@ -20,6 +20,8 @@ public class MetricDefinition {
     private Long tableId;
     private Long fieldId;
     private Integer status;
+    private Long categoryId;
+    private String categoryName;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

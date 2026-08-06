@@ -217,3 +217,38 @@ python gov_scraper.py --pages 3
   若仍混入少量导航链接，用 `--verbose` 观察后按需追加 `noise_filter` 配置
 - 站点无"下一页"链接且不支持 `page_param` 参数时，脚本检测到无新内容会自动提前停止（只抓第 1 页）
 - 发布日期、文号、单位、类目依赖页面文本中的规范写法，提取不到时留空，不影响入库
+
+
+## 统计栏目快速爬虫（gov_stat_scraper.py）
+
+- 用途：抓取邵阳市统计局三个统计栏目（统计月报 / 统计公报 / 统计分析）快速补全统计数据
+- 列表页：`https://www.shaoyang.gov.cn/shaoyang/{tjyb|stjgb|stjfx}/xlist.shtml`，分页为 `createPageHTML` 后缀式（`xlist_N.shtml`），函数第 2 个参数为真实页数（tjyb=5 / stjgb=10 / stjfx=11）
+- 解析：`infoList` 容器 + `.shtml/.html` 链接；站内链接从 URL `/YYYYMM/` 提取月份（取当月 1 日），跨站统计链接（stats.gov.cn / tjj.hunan.gov.cn）从 `tYYYYMMDD_` 提取精确日期
+- 入库：`gov_info_record`，`category=栏目名`，`publish_unit=邵阳市统计局`，`source_url` 唯一键幂等（重复跑只更新不重复插入）
+- 用法：
+  - `python gov_stat_scraper.py --pages 20`（每栏目最多 20 页）
+  - `python gov_stat_scraper.py --full`（按页面真实页数全量）
+- 数据量：统计月报 85 / 统计公报 189 / 统计分析 204，共 478 条（含 30 条跨站真实记录）
+
+## 统计类数据结构化采集管道（stat_scraper.py）
+
+- 用途：把统计三栏目 478 条列表级记录加工成「期间 × 指标 × 区县」结构化指标库（`stat_indicator`），支撑 AI 引擎趋势/对比/排名分析
+- 建表与元数据：`docs/sql/stat-pipeline.sql`（幂等可重复执行，含 stat_doc/stat_indicator + dataset/table_schema/table_field/metric_definition 注册）
+- 三阶段：
+  1. 详情页采集：遍历 478 条详情页，去导航/分享噪音存正文全文，发现 `.xlsx` 附件 → `stat_doc`
+  2. 月报卡解析（价值最高）：下载 85 份 xlsx → `openpyxl` 自适应表头识别（首列轴词+其余列关键词定位；支持区县表/4 列/3 列三种表形）→ 期间×指标×区县落 `stat_indicator`
+  3. 正文指标抽取：公报/分析正文规则正则优先（「指标数值单位、增长/下降X%」），`AI_API_KEY` 存在时 DeepSeek 兜底抽 JSON，无 key 纯规则
+- 幂等：`stat_doc` 按 gov_record_id 唯一键 upsert；`stat_indicator` 按唯一键 INSERT IGNORE；parse_status 断点续爬，重跑只补失败项
+- 区县归一化：月报卡列头短名（新宁/邵东/城步…）→ 官方全名（新宁县/邵东市/城步苗族自治县…），排名类指标独立为「指标名+排名」行（value=名次、unit=名）
+- 用法：
+  - `python stat_scraper.py --stage 1` / `--stage 2` / `--stage 3`（或 `--stage all`）
+  - `python stat_scraper.py --stage 2 --force`（重跑已解析文档）
+  - `python stat_scraper.py --stage 3 --dry-run`（只打印样例不落库）
+- 测试：`python test_stat_scraper.py`（51 项全绿；真实样本夹具在 `testdata/yuebao_202509.xlsx`）
+- 数据量（2026-08-06）：stat_doc 472 成功 + 6 死链失败；stat_indicator 31,182 条（XLSX 25,236 / BULLETIN 4,858 / ANALYSIS 1,088），13 区域 / 117 期间 / 2,227 指标名
+
+## AI 引擎接线（stat_indicator 问数，2026-08-06）
+- 数据库配置：`docs/sql/stat-analysis-config.sql`（幂等）——新增 `STAT_RANKING`/`STAT_TREND` 意图规则与计划配置，目标表 `stat_indicator`；管理后台「AI 规则配置」页可见可改。
+- Java：`SqlValidator` 白名单 + `stat_indicator`；`DemoMetadataCatalog` +「统计指标库」；`AnalysisPlanner` 表注释优先取目录。
+- 问法：邵阳经济趋势 / 2025年1-9月全市GDP / 各区县财政收入排名 / 规模工业增加值增速趋势（LLM 模式自适应，规则模式兜底 GDP 趋势与财政排名）。
+- 回退：删配置行 + 撤销白名单增量；`stat_indicator` 元数据 status=0 即从 Prompt 排除。

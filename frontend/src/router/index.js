@@ -39,6 +39,12 @@ const routes = [
         meta: { title: "数据源管理", requiresAuth: true, role: "ADMIN" },
       },
       {
+        path: "data-browse",
+        name: "DataBrowse",
+        component: () => import("@/views/admin/DataBrowse.vue"),
+        meta: { title: "数据浏览", requiresAuth: true, role: "ADMIN" },
+      },
+      {
         path: "dataset",
         name: "DatasetManage",
         component: () => import("@/views/admin/Dataset.vue"),
@@ -67,12 +73,6 @@ const routes = [
         name: "AnalysisConfig",
         component: () => import("@/views/admin/AnalysisConfig.vue"),
         meta: { title: "分析配置", requiresAuth: true, role: "ADMIN" },
-      },
-      {
-        path: "plan-config",
-        name: "PlanConfig",
-        component: () => import("@/views/admin/AnalysisConfig.vue"),
-        meta: { title: "计划配置", requiresAuth: true, role: "ADMIN" },
       },
       {
         path: "ai-model",

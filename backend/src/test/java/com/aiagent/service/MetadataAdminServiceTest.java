@@ -1,6 +1,7 @@
 package com.aiagent.service;
 
 import com.aiagent.entity.Dataset;
+import com.aiagent.entity.DataCategory;
 import com.aiagent.entity.MetricDefinition;
 import com.aiagent.entity.TableField;
 import com.aiagent.entity.TableSchema;
@@ -149,4 +150,62 @@ class MetadataAdminServiceTest {
         assertThrows(RuntimeException.class, () -> service.deleteMetric(9L));
     }
 
+    // ---------- category ----------
+    @Test
+    void listCategories_shouldDelegate() {
+        when(mapper.selectCategoryList()).thenReturn(List.of(new DataCategory()));
+        assertEquals(1, service.listCategories().size());
+        verify(mapper).selectCategoryList();
+    }
+
+    @Test
+    void createCategory_shouldFillDefaultsAndInsert() {
+        DataCategory category = new DataCategory();
+        category.setName("测试分类");
+        DataCategory saved = service.createCategory(category);
+        assertEquals("#409eff", saved.getColor(), "color 默认 #409eff");
+        assertEquals(0, saved.getSort(), "sort 默认 0");
+        verify(mapper).insertCategory(category);
+    }
+
+    @Test
+    void createCategory_shouldRejectBlankName() {
+        assertThrows(RuntimeException.class, () -> service.createCategory(new DataCategory()));
+        verify(mapper, never()).insertCategory(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void createCategory_shouldRejectDuplicateName() {
+        when(mapper.selectCategoryByName("政务数据")).thenReturn(new DataCategory());
+        DataCategory category = new DataCategory();
+        category.setName("政务数据");
+        assertThrows(RuntimeException.class, () -> service.createCategory(category));
+        verify(mapper, never()).insertCategory(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void updateCategory_shouldRejectWhenNotExists() {
+        when(mapper.selectCategoryById(9L)).thenReturn(null);
+        assertThrows(RuntimeException.class, () -> service.updateCategory(9L, new DataCategory()));
+    }
+
+    @Test
+    void updateCategory_shouldRejectDuplicateNameOfOtherCategory() {
+        DataCategory other = new DataCategory();
+        other.setId(2L);
+        when(mapper.selectCategoryById(1L)).thenReturn(new DataCategory());
+        when(mapper.selectCategoryByName("政务数据")).thenReturn(other);
+        DataCategory category = new DataCategory();
+        category.setName("政务数据");
+        assertThrows(RuntimeException.class, () -> service.updateCategory(1L, category));
+    }
+
+    @Test
+    void deleteCategory_shouldClearRefsAndDelete() {
+        when(mapper.selectCategoryById(1L)).thenReturn(new DataCategory());
+        when(mapper.deleteCategory(1L)).thenReturn(1);
+        service.deleteCategory(1L);
+        verify(mapper).clearCategoryRefs(1L);
+        verify(mapper).deleteCategory(1L);
+    }
 }

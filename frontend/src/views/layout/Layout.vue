@@ -12,6 +12,7 @@
           <el-sub-menu v-if="userStore.isAdmin" index="meta">
             <template #title>数据元配置</template>
             <el-menu-item index="/datasource">数据源管理</el-menu-item>
+            <el-menu-item index="/data-browse">数据浏览</el-menu-item>
             <el-menu-item index="/dataset">数据集管理</el-menu-item>
             <el-menu-item index="/data-table">数据表管理</el-menu-item>
             <el-menu-item index="/field-semantic">字段语义管理</el-menu-item>
@@ -19,11 +20,7 @@
           </el-sub-menu>
           <el-sub-menu v-if="userStore.isAdmin" index="aiconf">
             <template #title>AI 能力配置</template>
-            <el-sub-menu index="aconf">
-              <template #title>分析配置</template>
-              <el-menu-item index="/analysis-config">意图规则</el-menu-item>
-              <el-menu-item index="/plan-config">计划配置</el-menu-item>
-            </el-sub-menu>
+            <el-menu-item index="/analysis-config">分析配置</el-menu-item>
             <el-menu-item index="/ai-model">AI 模型配置</el-menu-item>
             <el-menu-item index="/prompt-template">Prompt 模板管理</el-menu-item>
           </el-sub-menu>

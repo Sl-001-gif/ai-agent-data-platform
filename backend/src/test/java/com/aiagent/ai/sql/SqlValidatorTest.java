@@ -19,6 +19,12 @@ class SqlValidatorTest {
     }
 
     @Test
+    void shouldAcceptStatIndicatorTable() {
+        assertPassed("SELECT period, value, growth_rate FROM stat_indicator WHERE indicator_name = '地区生产总值（GDP）'");
+        assertPassed("SELECT region, value FROM stat_indicator WHERE region <> '全市' ORDER BY value DESC");
+    }
+
+    @Test
     void shouldAcceptValidSelect() {
         assertPassed("SELECT order_date, SUM(order_count) FROM order_info GROUP BY order_date");
         assertPassed("SELECT * FROM user_info WHERE age_group = '18-24'");

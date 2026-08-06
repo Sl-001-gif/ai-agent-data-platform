@@ -2,6 +2,7 @@ package com.aiagent.controller;
 
 import com.aiagent.dto.ApiResponse;
 import com.aiagent.entity.Dataset;
+import com.aiagent.entity.DataCategory;
 import com.aiagent.entity.MetricDefinition;
 import com.aiagent.entity.TableField;
 import com.aiagent.entity.TableSchema;
@@ -111,6 +112,27 @@ public class MetadataAdminController {
         return ResponseEntity.ok(ApiResponse.success("更新成功", null));
     }
 
+    @GetMapping("/category")
+    public ResponseEntity<ApiResponse<List<DataCategory>>> listCategories() {
+        return ResponseEntity.ok(ApiResponse.success(metadataAdminService.listCategories()));
+    }
+
+    @PostMapping("/category")
+    public ResponseEntity<ApiResponse<DataCategory>> createCategory(@RequestBody DataCategory request) {
+        return ResponseEntity.ok(ApiResponse.success("新增成功", metadataAdminService.createCategory(request)));
+    }
+
+    @PutMapping("/category/{id}")
+    public ResponseEntity<ApiResponse<Void>> updateCategory(@PathVariable Long id, @RequestBody DataCategory request) {
+        metadataAdminService.updateCategory(id, request);
+        return ResponseEntity.ok(ApiResponse.success("更新成功", null));
+    }
+
+    @DeleteMapping("/category/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable Long id) {
+        metadataAdminService.deleteCategory(id);
+        return ResponseEntity.ok(ApiResponse.success("删除成功", null));
+    }
     @DeleteMapping("/metric/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteMetric(@PathVariable Long id) {
         metadataAdminService.deleteMetric(id);

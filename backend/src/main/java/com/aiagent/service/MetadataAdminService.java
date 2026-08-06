@@ -1,10 +1,12 @@
 package com.aiagent.service;
 
+import com.aiagent.entity.DataCategory;
 import com.aiagent.entity.Dataset;
 import com.aiagent.entity.MetricDefinition;
 import com.aiagent.entity.TableField;
 import com.aiagent.entity.TableSchema;
 import com.aiagent.mapper.MetadataAdminMapper;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -110,6 +112,45 @@ public class MetadataAdminService {
         requireRows(metadataAdminMapper.deleteMetric(id), "指标不存在");
     }
 
+    public List<DataCategory> listCategories() {
+        return metadataAdminMapper.selectCategoryList();
+    }
+
+    public DataCategory createCategory(DataCategory category) {
+        requireNotBlank(category.getName(), "分类名称不能为空");
+        if (metadataAdminMapper.selectCategoryByName(category.getName()) != null) {
+            throw new RuntimeException("分类名称已存在");
+        }
+        defaultCategory(category);
+        metadataAdminMapper.insertCategory(category);
+        return category;
+    }
+
+    public void updateCategory(Long id, DataCategory category) {
+        requireExisting(metadataAdminMapper.selectCategoryById(id), "分类不存在");
+        requireNotBlank(category.getName(), "分类名称不能为空");
+        DataCategory sameName = metadataAdminMapper.selectCategoryByName(category.getName());
+        if (sameName != null && !sameName.getId().equals(id)) {
+            throw new RuntimeException("分类名称已存在");
+        }
+        defaultCategory(category);
+        category.setId(id);
+        metadataAdminMapper.updateCategory(category);
+    }
+
+    @Transactional
+    public void deleteCategory(Long id) {
+        requireExisting(metadataAdminMapper.selectCategoryById(id), "分类不存在");
+        metadataAdminMapper.clearCategoryRefs(id);
+        requireRows(metadataAdminMapper.deleteCategory(id), "分类不存在");
+    }
+
+    private static void defaultCategory(DataCategory category) {
+        if (category.getColor() == null || category.getColor().trim().isEmpty()) {
+            category.setColor("#409eff");
+        }
+        defaultInt(category.getSort(), category::setSort);
+    }
     private static void requireExisting(Object existing, String message) {
         if (existing == null) {
             throw new RuntimeException(message);

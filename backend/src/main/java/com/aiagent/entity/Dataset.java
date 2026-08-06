@@ -21,6 +21,8 @@ public class Dataset {
     private String dbPassword;
     private Integer status;
     private Long createBy;
+    private Long categoryId;
+    private String categoryName;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

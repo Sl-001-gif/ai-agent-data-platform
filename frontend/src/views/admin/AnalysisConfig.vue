@@ -40,7 +40,14 @@
             <el-table-column prop="dimensions" label="维度" min-width="120" show-overflow-tooltip />
             <el-table-column prop="chartType" label="图表" width="80" />
             <el-table-column prop="timeRange" label="时间范围" width="100" />
-            <el-table-column prop="sqlTemplate" label="规则 SQL 模板" min-width="220" show-overflow-tooltip />
+            <el-table-column label="规则 SQL 模板" min-width="240">
+              <template #default="{ row }">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ row.sqlTemplate }}</span>
+                  <el-button size="small" type="primary" link @click="detailRef.open(row.sqlTemplate)">详情</el-button>
+                </div>
+              </template>
+            </el-table-column>
             <el-table-column label="操作" width="130" fixed="right">
               <template #default="{ row }">
                 <el-button size="small" type="primary" @click="openEdit(row)">编辑</el-button>
@@ -51,6 +58,7 @@
         </el-tab-pane>
       </el-tabs>
     </el-card>
+    <TextDetailDialog ref="detailRef" />
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="620px" destroy-on-close>
       <el-form v-if="activeTab === 'rule'" ref="ruleFormRef" :model="ruleForm" :rules="ruleRules" label-width="100px">
@@ -127,15 +135,15 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   listIntentRules, createIntentRule, updateIntentRule, deleteIntentRule,
   listPlanConfigs, createPlanConfig, updatePlanConfig, deletePlanConfig,
 } from "@/api/analysisConfig";
+import TextDetailDialog from "@/components/TextDetailDialog.vue";
+const detailRef = ref(null);
 
-const route = useRoute();
-const activeTab = ref(route.path.endsWith("/plan-config") ? "plan" : "rule");
+const activeTab = ref("rule");
 const rules = ref([]);
 const plans = ref([]);
 const ruleLoading = ref(false);

@@ -24,6 +24,8 @@ public class DemoMetadataCatalog {
                 List.of("新增用户数", "活跃用户数", "留存率"), List.of("日期", "年龄段", "性别", "城市")));
         TABLES.put("product_info", new DemoTable("product_info", "商品表",
                 List.of("销量", "销售额", "毛利率"), List.of("品类", "品牌", "价格带")));
+        TABLES.put("stat_indicator", new DemoTable("stat_indicator", "统计指标库",
+                List.of("地区生产总值（GDP）", "地方一般公共预算收入", "规模以上工业增加值", "居民人均可支配收入"), List.of("期间", "区县", "指标")));
     }
 
     public DemoTable getTable(String name) {

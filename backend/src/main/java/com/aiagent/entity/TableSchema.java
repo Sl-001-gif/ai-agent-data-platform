@@ -15,6 +15,8 @@ public class TableSchema {
     private String relationDesc;
     private Integer sort;
     private Integer status;
+    private Long categoryId;
+    private String categoryName;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }
