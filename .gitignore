@@ -49,3 +49,10 @@ study/
 docs/study-notes/
 tools/scraper/*.bak
 
+
+# ===== 本地敏感配置 / 个人治理文件（不入库，克隆后按 example 复制） =====
+backend/src/main/resources/application-dev.yml
+AGENTS.md
+
+# ===== 本地工具（gh 便携版等） =====
+.gh-cli/
