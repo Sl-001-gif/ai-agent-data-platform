@@ -25,3 +25,16 @@ export function updatePlanConfig(id, data) {
 export function deletePlanConfig(id) {
   return request.delete("/admin/analysis-config/plan-configs/" + id);
 }
+
+export function listPlanTypes() {
+  return request.get("/admin/analysis-config/plan-types");
+}
+export function createPlanType(data) {
+  return request.post("/admin/analysis-config/plan-types", data);
+}
+export function updatePlanType(id, data) {
+  return request.put("/admin/analysis-config/plan-types/" + id, data);
+}
+export function deletePlanType(id) {
+  return request.delete("/admin/analysis-config/plan-types/" + id);
+}

@@ -2,6 +2,7 @@ package com.aiagent.controller;
 
 import com.aiagent.dto.ApiResponse;
 import com.aiagent.entity.AnalysisIntentRule;
+import com.aiagent.entity.AnalysisPlanType;
 import com.aiagent.entity.AnalysisPlanConfig;
 import com.aiagent.service.AnalysisConfigService;
 import org.springframework.http.ResponseEntity;
@@ -68,6 +69,28 @@ public class AnalysisConfigAdminController {
     @DeleteMapping("/plan-configs/{id}")
     public ResponseEntity<ApiResponse<Void>> deletePlanConfig(@PathVariable Long id) {
         analysisConfigService.deletePlanConfig(id);
+        return ResponseEntity.ok(ApiResponse.success("删除成功", null));
+    }
+
+    @GetMapping("/plan-types")
+    public ResponseEntity<ApiResponse<List<AnalysisPlanType>>> listPlanTypes() {
+        return ResponseEntity.ok(ApiResponse.success(analysisConfigService.listPlanTypes()));
+    }
+
+    @PostMapping("/plan-types")
+    public ResponseEntity<ApiResponse<AnalysisPlanType>> createPlanType(@RequestBody AnalysisPlanType request) {
+        return ResponseEntity.ok(ApiResponse.success("新增成功", analysisConfigService.createPlanType(request)));
+    }
+
+    @PutMapping("/plan-types/{id}")
+    public ResponseEntity<ApiResponse<Void>> updatePlanType(@PathVariable Long id, @RequestBody AnalysisPlanType request) {
+        analysisConfigService.updatePlanType(id, request);
+        return ResponseEntity.ok(ApiResponse.success("更新成功", null));
+    }
+
+    @DeleteMapping("/plan-types/{id}")
+    public ResponseEntity<ApiResponse<Void>> deletePlanType(@PathVariable Long id) {
+        analysisConfigService.deletePlanType(id);
         return ResponseEntity.ok(ApiResponse.success("删除成功", null));
     }
 }

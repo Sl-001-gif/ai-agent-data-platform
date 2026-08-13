@@ -16,7 +16,7 @@
         <el-tab-pane v-for="c in categories" :key="c.id" :name="String(c.id)" :label="c.name" />
         <el-tab-pane label="未分类" name="none" />
       </el-tabs>
-      <el-table :data="filteredRows" v-loading="loading" border stripe size="small">
+      <el-table :data="pagedRows" v-loading="loading" border stripe size="small">
         <el-table-column prop="name" label="数据集名称" min-width="150" />
         <el-table-column label="分类" width="110">
           <template #default="{ row }">
@@ -43,6 +43,15 @@
           </template>
         </el-table-column>
       </el-table>
+            <el-pagination
+        style="margin-top: 12px; display: flex; justify-content: flex-end;"
+        background
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="filteredRows.length"
+        v-model:current-page="page"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50]"
+      />
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑数据集' : '新增数据集'" width="520px" destroy-on-close>
@@ -108,7 +117,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { listDatasets, createDataset, updateDataset, deleteDataset, listCategories, createCategory, updateCategory, deleteCategory } from "@/api/metadata";
 
@@ -118,6 +127,8 @@ const rows = ref([]);
 const keyword = ref("");
 const categories = ref([]);
 const activeCategory = ref("all");
+const page = ref(1);
+const pageSize = ref(10);
 const manageVisible = ref(false);
 const catForm = reactive({ name: "", color: "#409eff", sort: 0 });
 const dialogVisible = ref(false);
@@ -130,6 +141,13 @@ const filteredRows = computed(() => {
     return categoryMatches(r);
   });
 });
+
+const pagedRows = computed(() => {
+  const start = (page.value - 1) * pageSize.value;
+  return filteredRows.value.slice(start, start + pageSize.value);
+});
+
+watch([activeCategory, keyword], () => { page.value = 1; });
 
 function defaultForm() {
   return {

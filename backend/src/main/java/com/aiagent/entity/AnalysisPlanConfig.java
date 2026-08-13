@@ -10,6 +10,7 @@ public class AnalysisPlanConfig {
     private Long id;
     private String intentCode;
     private Integer isGov;
+    private String planType;
     private String tableName;
     private String metrics;
     private String dimensions;

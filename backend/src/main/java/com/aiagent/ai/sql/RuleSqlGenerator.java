@@ -6,7 +6,7 @@ import com.aiagent.service.AnalysisConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,33 +35,17 @@ public class RuleSqlGenerator implements SqlGenerator {
     public GeneratedSql generate(AnalysisPlan plan, RecognizedIntent intent) {
         String type = intent == null || intent.getIntentType() == null ? GENERAL_TYPE : intent.getIntentType();
         String targetTable = plan == null ? null : plan.getTargetTable();
-        boolean gov = GOV_TABLE.equalsIgnoreCase(targetTable);
-        AnalysisConfigService.PlanConfigSpec spec = resolveSpec(type, gov);
+        boolean govTarget = GOV_TABLE.equalsIgnoreCase(targetTable);
+        String typeCode = plan != null && plan.getPlanType() != null && !plan.getPlanType().isBlank()
+                ? plan.getPlanType().trim().toUpperCase(Locale.ROOT)
+                : (govTarget ? "GOV" : "NORMAL");
+        AnalysisConfigService.PlanConfigSpec spec = configService.resolvePlanSpec(type, typeCode);
         String template = spec == null || spec.sqlTemplate() == null ? null : spec.sqlTemplate();
         if (template == null) {
-            template = generalTemplate(gov);
+            template = generalTemplate(govTarget || "GOV".equals(typeCode));
         }
         String sql = template.replace("{timeRange}", buildTimeRange(plan));
         return new GeneratedSql(sql, "RULE");
-    }
-
-    /** 按意图（普通/政务）查模板，未命中回退该分组 GENERAL 模板。 */
-    private AnalysisConfigService.PlanConfigSpec resolveSpec(String type, boolean gov) {
-        List<AnalysisConfigService.PlanConfigSpec> specs = configService.planConfigs();
-        AnalysisConfigService.PlanConfigSpec matched = null;
-        AnalysisConfigService.PlanConfigSpec general = null;
-        for (AnalysisConfigService.PlanConfigSpec spec : specs) {
-            if (spec.gov() != gov) {
-                continue;
-            }
-            if (GENERAL_TYPE.equals(spec.intentCode())) {
-                general = spec;
-            }
-            if (spec.intentCode().equals(type)) {
-                matched = spec;
-            }
-        }
-        return matched != null ? matched : general;
     }
 
     /** 内置 GENERAL 兜底模板（与旧静态配置一致）。 */

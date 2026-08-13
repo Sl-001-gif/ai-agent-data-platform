@@ -2,6 +2,7 @@ package com.aiagent.service;
 
 import com.aiagent.entity.AnalysisIntentRule;
 import com.aiagent.entity.AnalysisPlanConfig;
+import com.aiagent.entity.AnalysisPlanType;
 import com.aiagent.mapper.AnalysisConfigMapper;
 import org.junit.jupiter.api.Test;
 
@@ -60,7 +61,7 @@ class AnalysisConfigServiceTest {
         when(mapper.selectPlanConfigs()).thenReturn(List.of());
         List<AnalysisConfigService.PlanConfigSpec> specs = service.planConfigs();
         assertEquals(16, specs.size(), "内置计划配置应为 16 条（普通 8 + 政务 8）");
-        long govCount = specs.stream().filter(AnalysisConfigService.PlanConfigSpec::gov).count();
+        long govCount = specs.stream().filter(s -> "GOV".equals(s.typeCode())).count();
         assertEquals(8, govCount);
     }
 
@@ -80,7 +81,7 @@ class AnalysisConfigServiceTest {
         List<AnalysisConfigService.PlanConfigSpec> specs = service.planConfigs();
         assertEquals(1, specs.size());
         AnalysisConfigService.PlanConfigSpec spec = specs.get(0);
-        assertTrue(spec.gov());
+        assertEquals("GOV", spec.typeCode());
         assertEquals(List.of("发文量", "日均发文量"), spec.metrics());
     }
 
@@ -112,5 +113,106 @@ class AnalysisConfigServiceTest {
     void govKeywords_shouldReturnBuiltinList() {
         assertTrue(service.govKeywords().contains("政务"));
         assertTrue(service.govKeywords().contains("发文"));
+    }
+
+    // ---------- 计划类型（自定义 + 启停） ----------
+
+    @Test
+    void planTypes_shouldFallbackToBuiltinWhenDbEmpty() {
+        when(mapper.selectPlanTypes()).thenReturn(List.of());
+        List<AnalysisConfigService.PlanTypeSpec> types = service.planTypes();
+        assertEquals(3, types.size(), "内置类型应为 NORMAL/GOV/STAT");
+        assertEquals("NORMAL", types.get(0).code());
+        assertTrue(types.stream().anyMatch(t -> "STAT".equals(t.code()) && t.keywords().contains("gdp")));
+    }
+
+    @Test
+    void planTypes_shouldSkipDisabled() {
+        AnalysisPlanType normal = new AnalysisPlanType();
+        normal.setTypeCode("NORMAL"); normal.setTypeName("普通"); normal.setStatus(1);
+        AnalysisPlanType disabled = new AnalysisPlanType();
+        disabled.setTypeCode("XX"); disabled.setTypeName("自定义"); disabled.setStatus(0);
+        when(mapper.selectPlanTypes()).thenReturn(List.of(normal, disabled));
+        List<AnalysisConfigService.PlanTypeSpec> types = service.planTypes();
+        assertEquals(1, types.size(), "停用类型应被过滤");
+        assertEquals("NORMAL", types.get(0).code());
+    }
+
+    @Test
+    void planConfigs_shouldExcludeRowsOfDisabledType() {
+        AnalysisPlanType disabled = new AnalysisPlanType();
+        disabled.setTypeCode("XX"); disabled.setTypeName("自定义"); disabled.setStatus(0);
+        when(mapper.selectPlanTypes()).thenReturn(List.of(disabled));
+        AnalysisPlanConfig row = new AnalysisPlanConfig();
+        row.setIntentCode("GENERAL"); row.setPlanType("XX"); row.setTableName("xx_table");
+        row.setMetrics("a"); row.setDimensions("b"); row.setChartType("table"); row.setStatus(1);
+        when(mapper.selectPlanConfigs()).thenReturn(List.of(row));
+        assertTrue(service.planConfigs().isEmpty(), "停用类型的计划配置不应参与路由");
+    }
+
+    @Test
+    void planConfigs_shouldDeriveTypeFromIsGovWhenBlank() {
+        AnalysisPlanConfig gov = new AnalysisPlanConfig();
+        gov.setIntentCode("GENERAL"); gov.setIsGov(1); gov.setTableName("GOV_INFO_RECORD");
+        gov.setMetrics("发文量"); gov.setDimensions("类目"); gov.setChartType("pie"); gov.setStatus(1);
+        when(mapper.selectPlanTypes()).thenReturn(List.of());
+        when(mapper.selectPlanConfigs()).thenReturn(List.of(gov));
+        List<AnalysisConfigService.PlanConfigSpec> specs = service.planConfigs();
+        assertEquals(1, specs.size());
+        assertEquals("GOV", specs.get(0).typeCode(), "plan_type 为空时应按 is_gov 推导");
+    }
+
+    @Test
+    void createPlanType_shouldRejectDuplicateCode() {
+        AnalysisPlanType existing = new AnalysisPlanType();
+        existing.setId(1L); existing.setTypeCode("STAT");
+        when(mapper.selectPlanTypeByCode("STAT")).thenReturn(existing);
+        AnalysisPlanType request = new AnalysisPlanType();
+        request.setTypeCode("stat"); request.setTypeName("统计");
+        assertThrows(RuntimeException.class, () -> service.createPlanType(request));
+        verify(mapper, never()).insertPlanType(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void createPlanType_shouldNormalizeAndFillDefaults() {
+        when(mapper.selectPlanTypeByCode("NEW_TYPE")).thenReturn(null);
+        AnalysisPlanType request = new AnalysisPlanType();
+        request.setTypeCode(" new_type "); request.setTypeName("新类型");
+        service.createPlanType(request);
+        assertEquals("NEW_TYPE", request.getTypeCode(), "类型编码应大写去空格");
+        assertEquals("#409eff", request.getColor());
+        assertEquals(1, request.getStatus());
+        verify(mapper).insertPlanType(request);
+    }
+
+    @Test
+    void deletePlanType_shouldResetRefsAndDelete() {
+        AnalysisPlanType type = new AnalysisPlanType();
+        type.setId(5L); type.setTypeCode("XX"); type.setTypeName("自定义");
+        when(mapper.selectPlanTypeById(5L)).thenReturn(type);
+        when(mapper.deletePlanType(5L)).thenReturn(1);
+        service.deletePlanType(5L);
+        verify(mapper).clearPlanTypeRefs("XX");
+        verify(mapper).deletePlanType(5L);
+    }
+
+    @Test
+    void deletePlanType_shouldRejectNormalType() {
+        AnalysisPlanType normal = new AnalysisPlanType();
+        normal.setId(1L); normal.setTypeCode("NORMAL"); normal.setTypeName("普通");
+        when(mapper.selectPlanTypeById(1L)).thenReturn(normal);
+        assertThrows(RuntimeException.class, () -> service.deletePlanType(1L));
+        verify(mapper, never()).deletePlanType(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void createPlanConfig_shouldSyncTypeToIsGov() {
+        AnalysisPlanConfig config = new AnalysisPlanConfig();
+        config.setIntentCode("STAT_TREND"); config.setTableName("stat_indicator");
+        config.setPlanType("STAT");
+        service.createPlanConfig(config);
+        assertEquals("STAT", config.getPlanType());
+        assertEquals(0, config.getIsGov(), "非 GOV 类型 is_gov 应为 0");
+        verify(mapper).insertPlanConfig(config);
     }
 }

@@ -8,12 +8,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Locale;
 
 /** 依据意图生成结构化分析计划：配置来自分析配置中心（库空回退内置），并支持从用户问题提取时间范围。 */
 @Component
 public class AnalysisPlanner {
 
     private static final String DEFAULT_TIME_RANGE = "近30天";
+    private static final String NORMAL_TYPE = "NORMAL";
+    private static final String GOV_TYPE = "GOV";
     private static final List<String> STEPS =
             List.of("INTENT", "PLAN", "SQL", "VALIDATE", "EXECUTE", "CHART", "INTERPRET", "REPORT");
 
@@ -35,39 +38,54 @@ public class AnalysisPlanner {
         return buildPlan(intent, null);
     }
 
-    /** 构建计划；question 用于提取时间范围（如「近3年按月」→ timeRange=近3年）。 */
+    /** 构建计划；question 用于提取时间范围与类型关键词路由。 */
     public AnalysisPlan buildPlan(RecognizedIntent intent, String question) {
         String type = intent == null || intent.getIntentType() == null ? "GENERAL" : intent.getIntentType();
-        boolean govRelated = intent != null && intent.getMatchedKeywords() != null
-                && intent.getMatchedKeywords().contains("政务公开");
-        AnalysisConfigService.PlanConfigSpec spec = resolveSpec(type, govRelated);
+        String typeCode = resolveTypeCode(intent, question);
+        AnalysisConfigService.PlanConfigSpec spec = configService.resolvePlanSpec(type, typeCode);
         DemoMetadataCatalog.DemoTable table = metadataCatalog.getTable(spec.tableName());
         String tableComment = table != null ? table.comment()
-                : govRelated ? "政府信息公开记录" : spec.tableName();
+                : GOV_TYPE.equals(typeCode) ? "政府信息公开记录" : spec.tableName();
         String timeRange = TimeRangeParser.extract(question);
         if (timeRange == null) {
             timeRange = spec.timeRange() == null || spec.timeRange().isBlank() ? DEFAULT_TIME_RANGE : spec.timeRange();
         }
-        return new AnalysisPlan(spec.tableName(), tableComment,
+        return new AnalysisPlan(typeCode, spec.tableName(), tableComment,
                 spec.metrics(), spec.dimensions(), timeRange, spec.chartType(), STEPS);
     }
 
-    /** 按意图（普通/政务）查计划配置，未命中回退该分组的 GENERAL。 */
-    private AnalysisConfigService.PlanConfigSpec resolveSpec(String type, boolean govRelated) {
-        List<AnalysisConfigService.PlanConfigSpec> specs = configService.planConfigs();
-        AnalysisConfigService.PlanConfigSpec matched = null;
-        AnalysisConfigService.PlanConfigSpec general = null;
-        for (AnalysisConfigService.PlanConfigSpec spec : specs) {
-            if (spec.gov() != govRelated) {
+    /**
+     * 类型路由：命中政务关键词 → GOV（保留原行为）；否则按启用中自定义类型的路由关键词匹配；
+     * 未命中任何类型 → NORMAL。
+     */
+    private String resolveTypeCode(RecognizedIntent intent, String question) {
+        boolean govRelated = intent != null && intent.getMatchedKeywords() != null
+                && intent.getMatchedKeywords().contains("政务公开");
+        if (govRelated) {
+            return GOV_TYPE;
+        }
+        String text = question == null ? "" : question;
+        for (AnalysisConfigService.PlanTypeSpec type : configService.planTypes()) {
+            if (NORMAL_TYPE.equals(type.code()) || GOV_TYPE.equals(type.code())) {
                 continue;
             }
-            if ("GENERAL".equals(spec.intentCode())) {
-                general = spec;
-            }
-            if (spec.intentCode().equals(type)) {
-                matched = spec;
+            if (matchesAny(text, type.keywords())) {
+                return type.code();
             }
         }
-        return matched != null ? matched : general;
+        return NORMAL_TYPE;
+    }
+
+    private static boolean matchesAny(String text, List<String> keywords) {
+        if (text.isEmpty() || keywords == null) {
+            return false;
+        }
+        String lower = text.toLowerCase(Locale.ROOT);
+        for (String keyword : keywords) {
+            if (keyword != null && !keyword.isBlank() && lower.contains(keyword.toLowerCase(Locale.ROOT))) {
+                return true;
+            }
+        }
+        return false;
     }
 }

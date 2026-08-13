@@ -12,7 +12,7 @@
         <el-tab-pane v-for="c in categories" :key="c.id" :name="String(c.id)" :label="c.name" />
         <el-tab-pane label="未分类" name="none" />
       </el-tabs>
-      <el-table :data="filteredRows" v-loading="loading" border stripe size="small">
+      <el-table :data="pagedRows" v-loading="loading" border stripe size="small">
         <el-table-column prop="datasetName" label="数据集" min-width="130" />
         <el-table-column prop="tableName" label="表名" min-width="120" />
         <el-table-column prop="fieldName" label="字段名" min-width="110" />
@@ -33,6 +33,15 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-pagination
+        style="margin-top: 12px; display: flex; justify-content: flex-end;"
+        background
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="filteredRows.length"
+        v-model:current-page="page"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50]"
+      />
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑字段语义' : '新增字段语义'" width="560px" destroy-on-close>
@@ -86,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { listFieldSemantics, createFieldSemantic, updateFieldSemantic, deleteFieldSemantic } from "@/api/metadata";
 import { listDataTables, listCategories } from "@/api/metadata";
@@ -99,6 +108,8 @@ const saving = ref(false);
 const rows = ref([]);
 const categories = ref([]);
 const activeCategory = ref("all");
+const page = ref(1);
+const pageSize = ref(10);
 
 const filteredRows = computed(() => {
   const a = activeCategory.value;
@@ -108,6 +119,12 @@ const filteredRows = computed(() => {
     return String(r.categoryId) === a;
   });
 });
+const pagedRows = computed(() => {
+  const start = (page.value - 1) * pageSize.value;
+  return filteredRows.value.slice(start, start + pageSize.value);
+});
+
+watch([activeCategory], () => { page.value = 1; });
 
 async function fetchCategories() {
   try {

@@ -244,10 +244,26 @@ CREATE TABLE IF NOT EXISTS analysis_intent_rule (
 -- ---------------------------------------------
 -- 分析计划配置表
 -- ---------------------------------------------
+-- ---------------------------------------------
+-- 分析计划类型配置表
+-- ---------------------------------------------
+CREATE TABLE IF NOT EXISTS analysis_plan_type (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    type_code VARCHAR(50) NOT NULL UNIQUE COMMENT '类型编码',
+    type_name VARCHAR(50) NOT NULL COMMENT '类型名称',
+    color VARCHAR(20) DEFAULT '#409eff' COMMENT '标签颜色',
+    route_keywords VARCHAR(500) COMMENT '路由关键词，逗号分隔；空=不参与关键词路由',
+    sort INT DEFAULT 0 COMMENT '排序',
+    status TINYINT DEFAULT 1 COMMENT '1启用 0停用',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分析计划类型配置';
+
 CREATE TABLE IF NOT EXISTS analysis_plan_config (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     intent_code VARCHAR(50) NOT NULL COMMENT '意图编码',
     is_gov TINYINT DEFAULT 0 COMMENT '是否政务类计划',
+    plan_type VARCHAR(50) DEFAULT 'NORMAL' COMMENT '计划类型编码（analysis_plan_type.type_code）',
     table_name VARCHAR(100) NOT NULL COMMENT '目标表名',
     metrics VARCHAR(500) NOT NULL COMMENT '指标，逗号分隔',
     dimensions VARCHAR(500) NOT NULL COMMENT '维度，逗号分隔',

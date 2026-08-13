@@ -7,7 +7,7 @@
           <el-button type="primary" size="small" @click="openCreate">新增数据源</el-button>
         </div>
       </template>
-      <el-table :data="dataSources" v-loading="loading" border stripe size="small">
+      <el-table :data="pagedRows" v-loading="loading" border stripe size="small">
         <el-table-column prop="name" label="名称" min-width="120" />
         <el-table-column prop="dbType" label="类型" width="80" />
         <el-table-column label="地址" min-width="160">
@@ -27,6 +27,15 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-pagination
+        style="margin-top: 12px; display: flex; justify-content: flex-end;"
+        background
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="dataSources.length"
+        v-model:current-page="page"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50]"
+      />
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑数据源' : '新增数据源'" width="520px" destroy-on-close>
@@ -68,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, computed, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { listDataSources, createDataSource, updateDataSource, deleteDataSource, testDataSource } from "@/api/datasource";
 
@@ -77,6 +86,13 @@ const saving = ref(false);
 const testing = ref(false);
 const testingId = ref(null);
 const dataSources = ref([]);
+const page = ref(1);
+const pageSize = ref(10);
+
+const pagedRows = computed(() => {
+  const start = (page.value - 1) * pageSize.value;
+  return dataSources.value.slice(start, start + pageSize.value);
+});
 const dialogVisible = ref(false);
 const formRef = ref(null);
 

@@ -12,7 +12,7 @@
         <el-tab-pane v-for="c in categories" :key="c.id" :name="String(c.id)" :label="c.name" />
         <el-tab-pane label="未分类" name="none" />
       </el-tabs>
-      <el-table :data="filteredRows" v-loading="loading" border stripe size="small">
+      <el-table :data="pagedRows" v-loading="loading" border stripe size="small">
         <el-table-column prop="datasetName" label="所属数据集" min-width="150" />
         <el-table-column prop="tableName" label="表名" min-width="140" />
         <el-table-column prop="tableComment" label="表说明" min-width="130" />
@@ -30,6 +30,15 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-pagination
+        style="margin-top: 12px; display: flex; justify-content: flex-end;"
+        background
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="filteredRows.length"
+        v-model:current-page="page"
+        v-model:page-size="pageSize"
+        :page-sizes="[10, 20, 50]"
+      />
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑数据表' : '新增数据表'" width="520px" destroy-on-close>
@@ -67,7 +76,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { listDataTables, createDataTable, updateDataTable, deleteDataTable } from "@/api/metadata";
 import { listDatasets, listCategories } from "@/api/metadata";
@@ -78,6 +87,8 @@ const rows = ref([]);
 const datasets = ref([]);
 const categories = ref([]);
 const activeCategory = ref("all");
+const page = ref(1);
+const pageSize = ref(10);
 
 const filteredRows = computed(() => {
   const a = activeCategory.value;
@@ -87,6 +98,12 @@ const filteredRows = computed(() => {
     return String(r.categoryId) === a;
   });
 });
+const pagedRows = computed(() => {
+  const start = (page.value - 1) * pageSize.value;
+  return filteredRows.value.slice(start, start + pageSize.value);
+});
+
+watch([activeCategory], () => { page.value = 1; });
 
 async function fetchCategories() {
   try {

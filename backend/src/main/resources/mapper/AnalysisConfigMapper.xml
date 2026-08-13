@@ -26,15 +26,15 @@
     </select>
 
     <insert id="insertPlanConfig" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO analysis_plan_config (intent_code, is_gov, table_name, metrics, dimensions,
+        INSERT INTO analysis_plan_config (intent_code, is_gov, plan_type, table_name, metrics, dimensions,
                                           chart_type, time_range, sql_template, status, sort)
-        VALUES (#{intentCode}, #{isGov}, #{tableName}, #{metrics}, #{dimensions},
+        VALUES (#{intentCode}, #{isGov}, #{planType}, #{tableName}, #{metrics}, #{dimensions},
                 #{chartType}, #{timeRange}, #{sqlTemplate}, #{status}, #{sort})
     </insert>
 
     <update id="updatePlanConfig">
         UPDATE analysis_plan_config
-        SET intent_code = #{intentCode}, is_gov = #{isGov}, table_name = #{tableName},
+        SET intent_code = #{intentCode}, is_gov = #{isGov}, plan_type = #{planType}, table_name = #{tableName},
             metrics = #{metrics}, dimensions = #{dimensions}, chart_type = #{chartType},
             time_range = #{timeRange}, sql_template = #{sqlTemplate}, status = #{status}, sort = #{sort}
         WHERE id = #{id}
@@ -47,7 +47,37 @@
     </select>
 
     <select id="selectPlanConfigs" resultType="com.aiagent.entity.AnalysisPlanConfig">
-        SELECT * FROM analysis_plan_config ORDER BY is_gov, sort, id
+        SELECT * FROM analysis_plan_config ORDER BY plan_type, sort, id
     </select>
+
+    <select id="selectPlanTypes" resultType="com.aiagent.entity.AnalysisPlanType">
+        SELECT * FROM analysis_plan_type ORDER BY sort, id
+    </select>
+
+    <select id="selectPlanTypeById" resultType="com.aiagent.entity.AnalysisPlanType">
+        SELECT * FROM analysis_plan_type WHERE id = #{id}
+    </select>
+
+    <select id="selectPlanTypeByCode" resultType="com.aiagent.entity.AnalysisPlanType">
+        SELECT * FROM analysis_plan_type WHERE type_code = #{typeCode}
+    </select>
+
+    <insert id="insertPlanType" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO analysis_plan_type (type_code, type_name, color, route_keywords, sort, status)
+        VALUES (#{typeCode}, #{typeName}, #{color}, #{routeKeywords}, #{sort}, #{status})
+    </insert>
+
+    <update id="updatePlanType">
+        UPDATE analysis_plan_type
+        SET type_code = #{typeCode}, type_name = #{typeName}, color = #{color},
+            route_keywords = #{routeKeywords}, sort = #{sort}, status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deletePlanType">DELETE FROM analysis_plan_type WHERE id = #{id}</delete>
+
+    <update id="clearPlanTypeRefs">
+        UPDATE analysis_plan_config SET plan_type = 'NORMAL' WHERE plan_type = #{typeCode}
+    </update>
 
 </mapper>
