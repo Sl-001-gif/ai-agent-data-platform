@@ -1,0 +1,1370 @@
+[
+  {
+    "id": "核算-Q01",
+    "domain": "核算",
+    "question": "请分析2025年前三季度邵阳市地区生产总值是多少，同比增速如何？",
+    "expect": {
+      "expectValue": 1974.6101,
+      "expectGrowth": 4.96,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "核算-Q02",
+    "domain": "核算",
+    "question": "请对比分析近三年（2023/2024/2025）前三季度邵阳市地区生产总值走势。",
+    "expect": {
+      "expectValue": 1974.6101,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "核算-Q03",
+    "domain": "核算",
+    "question": "请列出2025年前三季度邵阳市各区县地区生产总值排名，并说明增速情况。",
+    "expect": {
+      "expectValue": 520.1215,
+      "expectGrowth": 6.4,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "核算-Q04",
+    "domain": "核算",
+    "question": "请分析2025年前三季度邵阳市地区生产总值的三次产业结构（第一、二、三产业增加值及占比）。",
+    "expect": {
+      "expectValue": 303.6521,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "核算-Q05",
+    "domain": "核算",
+    "question": "2025年前三季度邵阳市金融业增加值是多少？同比增速多少？",
+    "expect": {
+      "expectValue": 99.5912,
+      "expectGrowth": 1.2,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "核算-Q06",
+    "domain": "核算",
+    "question": "2025年前三季度邵阳市农业总产值（现价）是多少？增速多少？",
+    "expect": {
+      "expectValue": 489.22,
+      "expectGrowth": 4.44,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "核算-Q07",
+    "domain": "核算",
+    "question": "2025年前三季度邵阳市第一产业增加值增速是多少？",
+    "expect": {
+      "expectGrowth": 4.2,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "核算-Q08",
+    "domain": "核算",
+    "question": "2025年前三季度邵阳市第二产业增加值增速是多少？",
+    "expect": {
+      "expectGrowth": 5.0,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "核算-Q09",
+    "domain": "核算",
+    "question": "2025年前三季度邵阳市第三产业增加值增速是多少？",
+    "expect": {
+      "expectGrowth": 5.1,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "核算-Q10",
+    "domain": "核算",
+    "question": "2025年前三季度邵阳市信息传输、软件和信息技术服务业增加值是多少？增速多少？",
+    "expect": {
+      "expectValue": 51.7417,
+      "expectGrowth": 7.8,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "核算-Q11",
+    "domain": "核算",
+    "question": "2025年前三季度邵阳市分行业增加值中占比最大的行业是哪个？增加值多少？",
+    "expect": {
+      "expectValue": 614.7678,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "核算-Q12",
+    "domain": "核算",
+    "question": "请分析2025年前三季度邵阳市地区生产总值是多少，同比增速如何？",
+    "expect": {
+      "expectValue": 1974.6101,
+      "expectGrowth": 4.96,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "核算-Q13",
+    "domain": "核算",
+    "question": "请列出2025年前三季度邵阳市各区县地区生产总值排名，并说明增速情况。",
+    "expect": {
+      "expectValue": 520.1215,
+      "expectGrowth": 6.4,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "核算-Q14",
+    "domain": "核算",
+    "question": "请查询2020年三季度邵阳市地区生产总值，说明期间口径与单位。",
+    "expect": {
+      "minRows": 1,
+      "rule": "期间=2020年1-9月、单位亿元"
+    }
+  },
+  {
+    "id": "工业-Q01",
+    "domain": "工业",
+    "question": "2025年前三季度邵阳市规模工业增加值增速是多少？",
+    "expect": {
+      "expectGrowth": 6.0,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "工业-Q02",
+    "domain": "工业",
+    "question": "请对比分析近三年前三季度邵阳市规模工业增加值增速走势。",
+    "expect": {
+      "expectGrowth": 6.0,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "工业-Q03",
+    "domain": "工业",
+    "question": "请列出2025年前三季度邵阳市各区县规模工业增加值增速排名。",
+    "expect": {
+      "expectGrowth": 11.58,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "工业-Q04",
+    "domain": "工业",
+    "question": "邵阳市规模工业利润总额最新数据是多少？增速多少？请标注数据期间。",
+    "expect": {
+      "expectValue": 106.8402,
+      "expectGrowth": 13.85,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "工业-Q05",
+    "domain": "工业",
+    "question": "邵阳市规模工业营业收入最新数据是多少？请说明期间与单位。",
+    "expect": {
+      "minRows": 1,
+      "rule": "期间=2025年1-8月（上月数据）、亿元口径"
+    }
+  },
+  {
+    "id": "工业-Q06",
+    "domain": "工业",
+    "question": "2025年前三季度邵阳市工业产品销售产值（现价）是多少？增速多少？",
+    "expect": {
+      "expectValue": 1982.188,
+      "expectGrowth": 5.28,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "工业-Q07",
+    "domain": "工业",
+    "question": "2025年前三季度邵阳市规模工业出口交货值是多少？增速多少？",
+    "expect": {
+      "expectValue": 121.467,
+      "expectGrowth": -5.25,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "工业-Q08",
+    "domain": "工业",
+    "question": "2025年前三季度邵阳市规模工业亏损面是多少？",
+    "expect": {
+      "expectValue": 4.126,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "工业-Q09",
+    "domain": "工业",
+    "question": "邵阳市规模工业亏损企业亏损额最新是多少？增速多少？",
+    "expect": {
+      "minRows": 1,
+      "rule": "约4.7亿元，-6.04%"
+    }
+  },
+  {
+    "id": "工业-Q10",
+    "domain": "工业",
+    "question": "邵阳市规模工业从业人员平均人数最新是多少？增速多少？",
+    "expect": {
+      "expectValue": 186206,
+      "expectGrowth": -2.57,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "工业-Q11",
+    "domain": "工业",
+    "question": "2025年前三季度邵阳市规模工业34个行业大类中增速最高的是哪个行业？增速多少？",
+    "expect": {
+      "expectGrowth": 263.55,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "工业-Q12",
+    "domain": "工业",
+    "question": "请对比2025年前三季度采矿业各细分行业（煤炭/黑色金属/有色金属/非金属矿采选）增加值增速。",
+    "expect": {
+      "expectGrowth": 4.73,
+      "minRows": 4
+    }
+  },
+  {
+    "id": "工业-Q13",
+    "domain": "工业",
+    "question": "2025年前三季度邵阳市规模工业增加值增速是多少？",
+    "expect": {
+      "expectGrowth": 6.0,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "能源交通-Q01",
+    "domain": "能源交通",
+    "question": "2025年前三季度邵阳市全市用电总量是多少？同比增速多少？",
+    "expect": {
+      "expectValue": 100.5986,
+      "expectGrowth": 0.9,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "能源交通-Q02",
+    "domain": "能源交通",
+    "question": "请对比分析近三年前三季度邵阳市全市用电总量走势。",
+    "expect": {
+      "expectValue": 100.5986,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "能源交通-Q03",
+    "domain": "能源交通",
+    "question": "2025年前三季度邵阳市工业用电量是多少？增速多少？",
+    "expect": {
+      "expectValue": 34.3698,
+      "expectGrowth": -3.3,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "能源交通-Q04",
+    "domain": "能源交通",
+    "question": "2025年前三季度邵阳市货运量（公路口径）是多少？增速多少？",
+    "expect": {
+      "expectValue": 7300.5427,
+      "expectGrowth": -3.33,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "能源交通-Q05",
+    "domain": "能源交通",
+    "question": "2025年前三季度邵阳市客运量合计（公路+水运）是多少？同比增速多少？",
+    "expect": {
+      "expectValue": 2096.5815,
+      "expectGrowth": -17.93,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "能源交通-Q06",
+    "domain": "能源交通",
+    "question": "2025年前三季度邵阳市公路客运量是多少？增速多少？",
+    "expect": {
+      "expectValue": 2088.4469,
+      "expectGrowth": -17.88,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "能源交通-Q07",
+    "domain": "能源交通",
+    "question": "2025年前三季度邵阳市水运客运量是多少？增速多少？",
+    "expect": {
+      "expectValue": 8.1346,
+      "expectGrowth": -29.7,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "能源交通-Q08",
+    "domain": "能源交通",
+    "question": "2025年前三季度邵阳市货物周转量（公路口径）是多少？增速多少？",
+    "expect": {
+      "expectValue": 512537.0918,
+      "expectGrowth": -3.21,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "能源交通-Q09",
+    "domain": "能源交通",
+    "question": "2025年前三季度邵阳市旅客周转量（公路+水运合计）是多少？",
+    "expect": {
+      "expectValue": 101325.0374,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "能源交通-Q10",
+    "domain": "能源交通",
+    "question": "2025年前三季度邵阳市各区县用电量排名如何？",
+    "expect": {
+      "rule": "区县无发布，应说明仅全市口径而非编造",
+      "minRows": 0
+    }
+  },
+  {
+    "id": "能源交通-Q11",
+    "domain": "能源交通",
+    "question": "请分析2018年到2025年邵阳市全社会用电总量的长期趋势，注意单位换算。",
+    "expect": {
+      "expectValue": 100.5986,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "能源交通-Q12",
+    "domain": "能源交通",
+    "question": "2025年前三季度邵阳市全市用电总量是多少？同比增速多少？",
+    "expect": {
+      "expectValue": 100.5986,
+      "expectGrowth": 0.9,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "能源交通-Q13",
+    "domain": "能源交通",
+    "question": "2025年前三季度邵阳市客运量合计（公路+水运）是多少？同比增速多少？",
+    "expect": {
+      "expectValue": 2096.5815,
+      "expectGrowth": -17.93,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "投资-Q01",
+    "domain": "投资",
+    "question": "2025年前三季度邵阳市固定资产投资增速是多少？",
+    "expect": {
+      "expectGrowth": -9.9,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "投资-Q02",
+    "domain": "投资",
+    "question": "请对比分析近三年前三季度邵阳市固定资产投资增速走势。",
+    "expect": {
+      "expectGrowth": -9.9,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "投资-Q03",
+    "domain": "投资",
+    "question": "请列出2025年前三季度邵阳市各区县固定资产投资增速排名。",
+    "expect": {
+      "expectGrowth": 12.1,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "投资-Q04",
+    "domain": "投资",
+    "question": "2025年前三季度邵阳市工业投资增速是多少？",
+    "expect": {
+      "expectGrowth": -1.1,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "投资-Q05",
+    "domain": "投资",
+    "question": "2025年前三季度邵阳市基础设施建设投资增速是多少？",
+    "expect": {
+      "expectGrowth": -15.0,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "投资-Q06",
+    "domain": "投资",
+    "question": "2025年前三季度邵阳市房地产开发投资增速是多少？",
+    "expect": {
+      "expectGrowth": -15.3,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "投资-Q07",
+    "domain": "投资",
+    "question": "2025年前三季度邵阳市高技术产业投资增速是多少？",
+    "expect": {
+      "expectGrowth": -15.4,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "投资-Q08",
+    "domain": "投资",
+    "question": "2025年前三季度邵阳市民间投资增速是多少？",
+    "expect": {
+      "expectGrowth": -11.8,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "投资-Q09",
+    "domain": "投资",
+    "question": "2025年前三季度邵阳市施工项目个数、本年新开工项目个数增速各是多少？",
+    "expect": {
+      "expectGrowth": -3.4,
+      "minRows": 2
+    }
+  },
+  {
+    "id": "投资-Q10",
+    "domain": "投资",
+    "question": "请按三次产业分析2025年前三季度邵阳市固定资产投资增速构成。",
+    "expect": {
+      "expectGrowth": -51.6,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "投资-Q11",
+    "domain": "投资",
+    "question": "请按建筑安装工程/设备工器具购置/其他费用结构分析2025年前三季度邵阳市固投增速。",
+    "expect": {
+      "expectGrowth": -9.2,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "投资-Q12",
+    "domain": "投资",
+    "question": "2025年前三季度邵阳市各行业固定资产投资增速排名前三的是哪些行业？",
+    "expect": {
+      "expectGrowth": 57.5,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "投资-Q13",
+    "domain": "投资",
+    "question": "2025年前三季度邵阳市固定资产投资增速是多少？",
+    "expect": {
+      "expectGrowth": -9.9,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "投资-Q14",
+    "domain": "投资",
+    "question": "2025年前三季度邵阳市工业投资增速是多少？",
+    "expect": {
+      "expectGrowth": -1.1,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "贸易-Q01",
+    "domain": "贸易",
+    "question": "2025年前三季度邵阳市社会消费品零售总额是多少？增速多少？",
+    "expect": {
+      "expectValue": 1182.715,
+      "expectGrowth": 4.85,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "贸易-Q02",
+    "domain": "贸易",
+    "question": "请对比分析近三年前三季度邵阳市社会消费品零售总额走势。",
+    "expect": {
+      "expectValue": 1182.715,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "贸易-Q03",
+    "domain": "贸易",
+    "question": "请列出2025年前三季度邵阳市各区县社会消费品零售总额排名。",
+    "expect": {
+      "expectValue": 267.6346,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "贸易-Q04",
+    "domain": "贸易",
+    "question": "2025年前三季度邵阳市限额以上零售额是多少？占社零总额比例多少？",
+    "expect": {
+      "expectValue": 546.7157,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "贸易-Q05",
+    "domain": "贸易",
+    "question": "2025年前三季度邵阳市限额以上法人单位零售额是多少？增速多少？",
+    "expect": {
+      "expectValue": 459.4673,
+      "expectGrowth": 8.22,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "贸易-Q06",
+    "domain": "贸易",
+    "question": "2025年前三季度邵阳市城镇、城区、乡村零售额分别是多少？",
+    "expect": {
+      "expectValue": 434.6221,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "贸易-Q07",
+    "domain": "贸易",
+    "question": "2025年前三季度邵阳市限额以上批发零售业与住宿餐饮业零售额对比如何？",
+    "expect": {
+      "expectValue": 424.4643,
+      "minRows": 2
+    }
+  },
+  {
+    "id": "贸易-Q08",
+    "domain": "贸易",
+    "question": "2025年前三季度邵阳市汽车类零售额是多少？增速多少？",
+    "expect": {
+      "expectValue": 75.2091,
+      "expectGrowth": 2.4,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "贸易-Q09",
+    "domain": "贸易",
+    "question": "2025年前三季度邵阳市石油制品类零售额是多少？增速多少？",
+    "expect": {
+      "expectValue": 60.6371,
+      "expectGrowth": -0.6,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "贸易-Q10",
+    "domain": "贸易",
+    "question": "2025年前三季度邵阳市粮油食品类零售额是多少？增速多少？占限上比重如何？",
+    "expect": {
+      "expectValue": 77.9967,
+      "expectGrowth": 8.9,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "贸易-Q11",
+    "domain": "贸易",
+    "question": "2025年前三季度邵阳市社会消费品零售总额是多少？增速多少？",
+    "expect": {
+      "expectValue": 1182.715,
+      "expectGrowth": 4.85,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "贸易-Q12",
+    "domain": "贸易",
+    "question": "请列出2025年前三季度邵阳市各区县社会消费品零售总额排名。",
+    "expect": {
+      "expectValue": 267.6346,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "外贸外资-Q01",
+    "domain": "外贸外资",
+    "question": "2025年前三季度邵阳市进出口总额是多少？增速多少？",
+    "expect": {
+      "expectValue": 93.4048,
+      "expectGrowth": -6.1,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "外贸外资-Q02",
+    "domain": "外贸外资",
+    "question": "2025年前三季度邵阳市出口额是多少？增速多少？",
+    "expect": {
+      "expectValue": 88.5752,
+      "expectGrowth": -4.9,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "外贸外资-Q03",
+    "domain": "外贸外资",
+    "question": "2025年前三季度邵阳市进口额是多少？增速多少？",
+    "expect": {
+      "expectValue": 4.8295,
+      "expectGrowth": -24.5,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "外贸外资-Q04",
+    "domain": "外贸外资",
+    "question": "请对比分析近三年前三季度邵阳市进出口总额走势，并核对出口+进口是否等于进出口。",
+    "expect": {
+      "expectValue": 93.4048,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "外贸外资-Q05",
+    "domain": "外贸外资",
+    "question": "2025年前三季度邵阳市外商直接投资是多少？增速多少？",
+    "expect": {
+      "expectValue": 720.9,
+      "expectGrowth": 146.29,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "外贸外资-Q06",
+    "domain": "外贸外资",
+    "question": "请分析2023年以来邵阳市外商直接投资走势，注意口径统一。",
+    "expect": {
+      "expectValue": 720.9,
+      "minRows": 1,
+      "rule": "不得把实际利用境外资金与外商直接投资同时列为两个指标"
+    }
+  },
+  {
+    "id": "外贸外资-Q07",
+    "domain": "外贸外资",
+    "question": "2025年前三季度邵阳市各区县外商直接投资排名如何？",
+    "expect": {
+      "expectValue": 102.5,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "外贸外资-Q08",
+    "domain": "外贸外资",
+    "question": "2025年前三季度邵阳市进出口总额是多少？增速多少？",
+    "expect": {
+      "expectValue": 93.4048,
+      "expectGrowth": -6.1,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "外贸外资-Q09",
+    "domain": "外贸外资",
+    "question": "2025年前三季度邵阳市外商直接投资是多少？增速多少？",
+    "expect": {
+      "expectValue": 720.9,
+      "expectGrowth": 146.29,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "外贸外资-Q10",
+    "domain": "外贸外资",
+    "question": "请查询2019年邵阳市进出口数据，注意区分万美元与亿元两种口径。",
+    "expect": {
+      "minRows": 1,
+      "rule": "2019年存在万美元与亿元双口径，不得混用"
+    }
+  },
+  {
+    "id": "外贸外资-Q11",
+    "domain": "外贸外资",
+    "question": "长株潭地区进出口数据是多少？请说明区域口径。",
+    "expect": {
+      "minRows": 1,
+      "rule": "省级区域比较数据，不与邵阳区县混排"
+    }
+  },
+  {
+    "id": "外贸外资-Q12",
+    "domain": "外贸外资",
+    "question": "邵阳市2025年前三季度利用外资情况如何？",
+    "expect": {
+      "expectValue": 720.9,
+      "minRows": 1,
+      "rule": "不得出现实际利用境外资金旧名"
+    }
+  },
+  {
+    "id": "房地产-Q01",
+    "domain": "房地产",
+    "question": "2025年前三季度邵阳市商品房销售面积是多少？增速多少？",
+    "expect": {
+      "expectValue": 235.1,
+      "expectGrowth": -14.38,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "房地产-Q02",
+    "domain": "房地产",
+    "question": "2025年前三季度邵阳市其中住宅销售面积是多少？增速多少？",
+    "expect": {
+      "expectValue": 220.6,
+      "expectGrowth": -16.22,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "房地产-Q03",
+    "domain": "房地产",
+    "question": "2025年前三季度邵阳市商品房屋销售额是多少？增速多少？",
+    "expect": {
+      "expectValue": 97.5,
+      "expectGrowth": -18.27,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "房地产-Q04",
+    "domain": "房地产",
+    "question": "2025年前三季度邵阳市其中住宅销售额是多少？增速多少？",
+    "expect": {
+      "expectValue": 89.6,
+      "expectGrowth": -18.69,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "房地产-Q05",
+    "domain": "房地产",
+    "question": "2025年前三季度邵阳市商品房施工面积是多少？增速多少？",
+    "expect": {
+      "expectValue": 1596.8,
+      "expectGrowth": -1.73,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "房地产-Q06",
+    "domain": "房地产",
+    "question": "2025年前三季度邵阳市商品房竣工面积是多少？增速多少？",
+    "expect": {
+      "expectValue": 134.4,
+      "expectGrowth": 89.83,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "房地产-Q07",
+    "domain": "房地产",
+    "question": "请对比分析近三年前三季度邵阳市商品房销售面积走势。",
+    "expect": {
+      "expectValue": 235.1,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "房地产-Q08",
+    "domain": "房地产",
+    "question": "2025年前三季度邵阳市商品房销售面积是多少？增速多少？",
+    "expect": {
+      "expectValue": 235.1,
+      "expectGrowth": -14.38,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "房地产-Q09",
+    "domain": "房地产",
+    "question": "请查询2021年前三季度邵阳市商品房销售面积，核对历史口径连贯性。",
+    "expect": {
+      "expectValue": 421.8,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "财政-Q01",
+    "domain": "财政",
+    "question": "2025年前三季度邵阳市地方一般公共预算收入是多少？增速多少？",
+    "expect": {
+      "expectValue": 861488,
+      "expectGrowth": -6.25,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "财政-Q02",
+    "domain": "财政",
+    "question": "请对比分析近三年前三季度邵阳市一般公共预算收入走势。",
+    "expect": {
+      "expectValue": 861488,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "财政-Q03",
+    "domain": "财政",
+    "question": "请列出2025年前三季度邵阳市各区县一般公共预算收入排名。",
+    "expect": {
+      "expectValue": 138308,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "财政-Q04",
+    "domain": "财政",
+    "question": "2025年前三季度邵阳市税收收入与非税收入分别是多少？结构如何？",
+    "expect": {
+      "expectValue": 451751,
+      "minRows": 2
+    }
+  },
+  {
+    "id": "财政-Q05",
+    "domain": "财政",
+    "question": "2025年前三季度邵阳市增值税是多少？增速多少？",
+    "expect": {
+      "expectValue": 148678,
+      "expectGrowth": 7.04,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "财政-Q06",
+    "domain": "财政",
+    "question": "2025年前三季度邵阳市个人所得税是多少？增速多少？",
+    "expect": {
+      "expectValue": 15256,
+      "expectGrowth": 34.17,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "财政-Q07",
+    "domain": "财政",
+    "question": "2025年前三季度邵阳市契税是多少？增速多少？",
+    "expect": {
+      "expectValue": 33641,
+      "expectGrowth": -45.9,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "财政-Q08",
+    "domain": "财政",
+    "question": "2025年前三季度邵阳市一般公共预算支出是多少？增速多少？",
+    "expect": {
+      "expectValue": 4837408,
+      "expectGrowth": 3.18,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "财政-Q09",
+    "domain": "财政",
+    "question": "请列出2025年前三季度邵阳市各区县一般公共预算支出排名。",
+    "expect": {
+      "expectValue": 582190,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "财政-Q10",
+    "domain": "财政",
+    "question": "2025年前三季度邵阳市一般公共预算支出中功能分类占比最大的是哪项？金额多少？",
+    "expect": {
+      "expectValue": 945386,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "财政-Q11",
+    "domain": "财政",
+    "question": "2025年前三季度邵阳市农林水事务支出是多少？增速多少？",
+    "expect": {
+      "expectValue": 647434,
+      "expectGrowth": 23.89,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "财政-Q12",
+    "domain": "财政",
+    "question": "2025年前三季度邵阳市地方一般公共预算收入是多少？增速多少？",
+    "expect": {
+      "expectValue": 861488,
+      "expectGrowth": -6.25,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "财政-Q13",
+    "domain": "财政",
+    "question": "2025年前三季度邵阳市一般公共预算支出是多少？增速多少？",
+    "expect": {
+      "expectValue": 4837408,
+      "expectGrowth": 3.18,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "金融-Q01",
+    "domain": "金融",
+    "question": "2025年9月末邵阳市各项存款余额是多少？比年初变化多少？",
+    "expect": {
+      "expectValue": 5191.4428,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "金融-Q02",
+    "domain": "金融",
+    "question": "2025年9月末邵阳市各项贷款余额是多少？比年初变化多少？",
+    "expect": {
+      "expectValue": 3284.0098,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "金融-Q03",
+    "domain": "金融",
+    "question": "请对比分析近三年9月末邵阳市存贷款余额走势。",
+    "expect": {
+      "expectValue": 5191.4428,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "金融-Q04",
+    "domain": "金融",
+    "question": "2025年9月末邵阳市存款结构（住户/非金融企业/广义政府/非银机构）如何？",
+    "expect": {
+      "expectValue": 4344.0492,
+      "minRows": 4
+    }
+  },
+  {
+    "id": "金融-Q05",
+    "domain": "金融",
+    "question": "2025年9月末邵阳市住户存款中活期与定期分别是多少？",
+    "expect": {
+      "expectValue": 1040.5204,
+      "minRows": 2
+    }
+  },
+  {
+    "id": "金融-Q06",
+    "domain": "金融",
+    "question": "2025年9月末邵阳市贷款结构（住户/非金融企业及机关团体/非银机构）如何？",
+    "expect": {
+      "expectValue": 1361.6332,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "金融-Q07",
+    "domain": "金融",
+    "question": "2025年9月末邵阳市住户中长期消费贷款余额是多少？",
+    "expect": {
+      "expectValue": 603.8236,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "金融-Q08",
+    "domain": "金融",
+    "question": "2025年9月末邵阳市票据融资余额是多少？比年初变化多少？",
+    "expect": {
+      "expectValue": 224.5454,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "金融-Q09",
+    "domain": "金融",
+    "question": "请列出2025年9月末邵阳市各区县存款余额排名。",
+    "expect": {
+      "expectValue": 850.4703,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "金融-Q10",
+    "domain": "金融",
+    "question": "请列出2025年9月末邵阳市各区县贷款余额排名。",
+    "expect": {
+      "expectValue": 593.793,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "金融-Q11",
+    "domain": "金融",
+    "question": "2025年9月末邵阳市各项存款余额是多少？比年初变化多少？",
+    "expect": {
+      "expectValue": 5191.4428,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "金融-Q12",
+    "domain": "金融",
+    "question": "2025年9月末邵阳市各项贷款余额是多少？比年初变化多少？",
+    "expect": {
+      "expectValue": 3284.0098,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "居民收支-Q01",
+    "domain": "居民收支",
+    "question": "2025年前三季度邵阳市全体居民人均可支配收入是多少？增速多少？",
+    "expect": {
+      "expectValue": 21308.82,
+      "expectGrowth": 5.9,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "居民收支-Q02",
+    "domain": "居民收支",
+    "question": "请对比分析近三年前三季度邵阳市全体居民人均可支配收入走势。",
+    "expect": {
+      "expectValue": 21308.82,
+      "minRows": 3
+    }
+  },
+  {
+    "id": "居民收支-Q03",
+    "domain": "居民收支",
+    "question": "请列出2025年前三季度邵阳市各区县全体居民人均可支配收入排名。",
+    "expect": {
+      "expectValue": 31796,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "居民收支-Q04",
+    "domain": "居民收支",
+    "question": "2025年前三季度邵阳市城镇居民人均可支配收入是多少？增速多少？",
+    "expect": {
+      "expectValue": 30402.3,
+      "expectGrowth": 4.9,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "居民收支-Q05",
+    "domain": "居民收支",
+    "question": "请列出2025年前三季度邵阳市各区县城镇居民人均可支配收入排名。",
+    "expect": {
+      "expectValue": 35788,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "居民收支-Q06",
+    "domain": "居民收支",
+    "question": "2025年前三季度邵阳市农村居民人均可支配收入是多少？增速多少？",
+    "expect": {
+      "expectValue": 14314.07,
+      "expectGrowth": 6.5,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "居民收支-Q07",
+    "domain": "居民收支",
+    "question": "请列出2025年前三季度邵阳市各区县农村居民人均可支配收入排名。",
+    "expect": {
+      "expectValue": 23102,
+      "minRows": 10
+    }
+  },
+  {
+    "id": "居民收支-Q08",
+    "domain": "居民收支",
+    "question": "请分析2025年前三季度邵阳市城乡收入差距（城镇/农村收入比）。",
+    "expect": {
+      "expectValue": 30402.3,
+      "minRows": 2
+    }
+  },
+  {
+    "id": "居民收支-Q09",
+    "domain": "居民收支",
+    "question": "2025年前三季度邵阳市城镇居民收入构成（工资/经营/财产/转移净收入）如何？",
+    "expect": {
+      "expectValue": 15884.44,
+      "minRows": 4
+    }
+  },
+  {
+    "id": "居民收支-Q10",
+    "domain": "居民收支",
+    "question": "2025年前三季度邵阳市全体居民人均消费支出是多少？增速多少？",
+    "expect": {
+      "expectValue": 15554.42,
+      "expectGrowth": 5.34,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "居民收支-Q11",
+    "domain": "居民收支",
+    "question": "2025年前三季度邵阳市农村居民收入增速是否高于城镇居民？城乡差距趋势如何？",
+    "expect": {
+      "expectGrowth": 6.5,
+      "minRows": 2
+    }
+  },
+  {
+    "id": "居民收支-Q12",
+    "domain": "居民收支",
+    "question": "2025年前三季度邵阳市全体居民人均可支配收入是多少？增速多少？",
+    "expect": {
+      "expectValue": 21308.82,
+      "expectGrowth": 5.9,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "居民收支-Q13",
+    "domain": "居民收支",
+    "question": "2025年前三季度邵阳市城镇居民人均可支配收入是多少？增速多少？",
+    "expect": {
+      "expectValue": 30402.3,
+      "expectGrowth": 4.9,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "排名-Q01",
+    "domain": "排名快照",
+    "question": "2025年前三季度邵阳市哪个区县地区生产总值增速最快？增速多少？",
+    "expect": {
+      "expectGrowth": 6.4,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "排名-Q02",
+    "domain": "排名快照",
+    "question": "2025年前三季度邵阳市哪个区县地区生产总值绝对额最大？",
+    "expect": {
+      "expectValue": 520.1215,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "排名-Q03",
+    "domain": "排名快照",
+    "question": "2025年前三季度邵阳市哪个区县规模工业增加值增速第一？",
+    "expect": {
+      "expectGrowth": 11.58,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "排名-Q04",
+    "domain": "排名快照",
+    "question": "2025年前三季度邵阳市哪个区县固定资产投资增速第一？",
+    "expect": {
+      "expectGrowth": 12.1,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "排名-Q05",
+    "domain": "排名快照",
+    "question": "2025年前三季度邵阳市哪个区县社会消费品零售总额第一？",
+    "expect": {
+      "expectValue": 267.6346,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "排名-Q06",
+    "domain": "排名快照",
+    "question": "2025年前三季度邵阳市哪个区县一般公共预算收入增速第一？",
+    "expect": {
+      "expectGrowth": 41.55,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "排名-Q07",
+    "domain": "排名快照",
+    "question": "2025年前三季度邵阳市哪个区县全体居民人均可支配收入第一？",
+    "expect": {
+      "expectValue": 31796,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "排名-Q08",
+    "domain": "排名快照",
+    "question": "2025年前三季度邵阳市哪个区县农村居民人均可支配收入第一？",
+    "expect": {
+      "expectValue": 23102,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "排名-Q09",
+    "domain": "排名快照",
+    "question": "2025年前三季度邵阳市各区县GDP增速前三名是哪些？",
+    "expect": {
+      "minRows": 3,
+      "rule": "排名表驱动，不出现全市行"
+    }
+  },
+  {
+    "id": "排名-Q10",
+    "domain": "排名快照",
+    "question": "2025年前三季度邵阳市哪个区县地区生产总值增速最快？增速多少？",
+    "expect": {
+      "expectGrowth": 6.4,
+      "minRows": 1
+    }
+  },
+  {
+    "id": "跨期-Q01",
+    "domain": "跨期口径",
+    "question": "请核对2025年邵阳市社零、财政、固投各累计期（1-2月至1-9月）数据是否单调递增。",
+    "expect": {
+      "minRows": 8,
+      "rule": "累计值应单调不减"
+    }
+  },
+  {
+    "id": "跨期-Q02",
+    "domain": "跨期口径",
+    "question": "邵阳市产业投资增速最新是多少？请说明口径与数据期间。",
+    "expect": {
+      "expectGrowth": 5.7,
+      "minRows": 1,
+      "rule": "2024年9月后官方停发，最新=2024年1-9月，不得用2025年数据冒顶"
+    }
+  },
+  {
+    "id": "跨期-Q03",
+    "domain": "跨期口径",
+    "question": "邵阳市全社会客运量最新是多少？请说明口径变化。",
+    "expect": {
+      "expectValue": 2096.5815,
+      "minRows": 1,
+      "rule": "映射到客运量合计口径，2025年起按公路/水运发布"
+    }
+  },
+  {
+    "id": "跨期-Q04",
+    "domain": "跨期口径",
+    "question": "邵阳市实际利用境外资金最新是多少？",
+    "expect": {
+      "expectValue": 720.9,
+      "minRows": 1,
+      "rule": "应返回外商直接投资，无旧名双行"
+    }
+  },
+  {
+    "id": "跨期-Q05",
+    "domain": "跨期口径",
+    "question": "邵阳市生产总值(GDP)最新是多少？",
+    "expect": {
+      "expectValue": 1974.6101,
+      "minRows": 1,
+      "rule": "应返回地区生产总值，无(GDP)双行"
+    }
+  },
+  {
+    "id": "跨期-Q06",
+    "domain": "跨期口径",
+    "question": "邵阳市一般公共预算支出合计最新是多少？",
+    "expect": {
+      "expectValue": 4837408,
+      "minRows": 1,
+      "rule": "应返回一般公共预算支出，无双行"
+    }
+  },
+  {
+    "id": "跨期-Q07",
+    "domain": "跨期口径",
+    "question": "邵阳市9月末存款余额是多少？请说明期间口径。",
+    "expect": {
+      "expectValue": 5191.4428,
+      "minRows": 1,
+      "rule": "时点值，与累计指标区分"
+    }
+  },
+  {
+    "id": "跨期-Q08",
+    "domain": "跨期口径",
+    "question": "邵阳市最新规模工业利润总额是多少？请说明期间。",
+    "expect": {
+      "expectValue": 106.8402,
+      "minRows": 1,
+      "rule": "1-8月=上月数据"
+    }
+  },
+  {
+    "id": "跨期-Q09",
+    "domain": "跨期口径",
+    "question": "邵阳市GDP是多少？请用亿元口径回答。",
+    "expect": {
+      "expectValue": 1974.6101,
+      "minRows": 1,
+      "rule": "亿元口径，不得混入万元分县值"
+    }
+  },
+  {
+    "id": "跨期-Q10",
+    "domain": "跨期口径",
+    "question": "2024年前三季度邵阳市用电量同比增速是多少？",
+    "expect": {
+      "expectGrowth": 6.2,
+      "minRows": 1
+    }
+  }
+]

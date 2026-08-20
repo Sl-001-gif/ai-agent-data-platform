@@ -4,31 +4,52 @@
 <mapper namespace="com.aiagent.mapper.AnalysisReportMapper">
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO analysis_report (session_id, title, content, status, create_by)
-        VALUES (#{sessionId}, #{title}, #{content}, #{status}, #{createBy})
+        INSERT INTO analysis_report (session_id, round_no, title, content, status, create_by)
+        VALUES (#{sessionId}, #{roundNo}, #{title}, #{content}, #{status}, #{createBy})
     </insert>
 
     <delete id="deleteBySessionId">
         DELETE FROM analysis_report WHERE session_id = #{sessionId}
     </delete>
 
+    <delete id="deleteById">
+        DELETE FROM analysis_report WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteBySessionIdAndRound">
+        DELETE FROM analysis_report WHERE session_id = #{sessionId} AND round_no = #{roundNo}
+    </delete>
+
     <select id="selectBySessionId" resultType="com.aiagent.entity.AnalysisReport">
-        SELECT id, session_id, title, content, status, create_by, create_time, update_time
+        SELECT id, session_id, round_no, title, content, status, create_by, create_time, update_time
         FROM analysis_report
         WHERE session_id = #{sessionId}
+        ORDER BY round_no DESC, id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectBySessionIdAndRound" resultType="com.aiagent.entity.AnalysisReport">
+        SELECT id, session_id, round_no, title, content, status, create_by, create_time, update_time
+        FROM analysis_report
+        WHERE session_id = #{sessionId} AND round_no = #{roundNo}
         ORDER BY id DESC
         LIMIT 1
     </select>
 
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*) FROM analysis_report WHERE create_by = #{userId}
+    </select>
+
     <select id="selectByUserId" resultType="com.aiagent.entity.AnalysisReport">
-        SELECT id, session_id, title, content, status, create_by, create_time, update_time
+        SELECT id, session_id, round_no, title, content, status, create_by, create_time, update_time
         FROM analysis_report
         WHERE create_by = #{userId}
         ORDER BY id DESC
+        LIMIT #{offset}, #{limit}
     </select>
 
     <select id="selectById" resultType="com.aiagent.entity.AnalysisReport">
-        SELECT id, session_id, title, content, status, create_by, create_time, update_time
+        SELECT id, session_id, round_no, title, content, status, create_by, create_time, update_time
         FROM analysis_report
         WHERE id = #{id}
     </select>

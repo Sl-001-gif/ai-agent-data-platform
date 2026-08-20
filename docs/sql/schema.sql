@@ -129,6 +129,7 @@ CREATE TABLE IF NOT EXISTS analysis_session (
     user_id BIGINT NOT NULL,
     dataset_id BIGINT,
     title VARCHAR(500),
+    analysis_goal VARCHAR(500) COMMENT '分析目标',
     status VARCHAR(20) DEFAULT 'ACTIVE',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -142,6 +143,7 @@ CREATE TABLE IF NOT EXISTS analysis_session (
 CREATE TABLE IF NOT EXISTS analysis_step (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     session_id BIGINT NOT NULL,
+    round_no INT DEFAULT 1 COMMENT '轮次',
     step_order INT DEFAULT 1,
     step_type VARCHAR(50) COMMENT 'INTENT/PLAN/SQL/VALIDATE/EXECUTE/CHART/INTERPRET/REPORT',
     input_data TEXT,
@@ -160,6 +162,7 @@ CREATE TABLE IF NOT EXISTS analysis_step (
 CREATE TABLE IF NOT EXISTS analysis_report (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     session_id BIGINT NOT NULL,
+    round_no INT DEFAULT 1 COMMENT '轮次',
     title VARCHAR(500),
     content LONGTEXT,
     status VARCHAR(20) DEFAULT 'DRAFT',
@@ -198,6 +201,8 @@ CREATE TABLE IF NOT EXISTS prompt_template (
     version INT DEFAULT 1,
     status TINYINT DEFAULT 1,
     category_id BIGINT NULL COMMENT '所属分类 ID（data_category.id）',
+    variables VARCHAR(500) NULL COMMENT '变量名逗号分隔（datasetSchema/userQuestion/originSQL）',
+    sort INT DEFAULT 0 COMMENT '排序权重',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Prompt 模板表';
@@ -288,7 +293,9 @@ INSERT INTO analysis_intent_rule (intent_code, intent_name, keywords, priority, 
 ('COMPARISON', '对比分析', '对比,比较,差异', 4, 1),
 ('STRUCTURE', '占比结构', '占比,结构,构成,比例,份额', 5, 1),
 ('RANKING', '排名分析', '排名,排行,最好,最差,top10,top 10,前10', 6, 1),
-('SALES_TREND', '销售趋势', '销售,销售额,销量,营收,收入,趋势,走势,增长', 7, 1);
+('SALES_TREND', '销售趋势', '销售,销售额,销量,营收,收入,趋势,走势,增长', 7, 1),
+('STAT_TREND', '统计指标趋势', 'gdp,生产总值,地区生产总值,GDP,财政收入,一般公共预算收入,一般公共预算支出,预算收入,财政支出,税收,非税收入,规上工业,规模以上工业,工业增加值,居民收入,全体居民人均可支配收入,社会消费品零售,固定资产投资,统计月报,统计公报,统计分析,统计局,经济指标,经济趋势,经济数据,经济总量,经济运行,经济形势,经济,增速,增幅,第一产业,第二产业,第三产业,一产,二产,三产,产业发展,产业趋势,外商,外资,进出口,出口,进口,零售,存款,贷款,可支配收入,用电量,全社会用电量,客运量,货运量,商品房销售,工业投资,产业投资,高技术产业投资', 1, 1),
+('STAT_RANKING', '区县指标排名', '区县财政收入,县市区财政收入,财政收入排名,区县排名,县市区排名,区县gdp,县市区gdp,gdp排名,经济排名,区县经济,县市区经济,指标排名', 0, 1);
 
 -- ---------------------------------------------
 -- 分析计划配置种子（普通 8 条 + 政务 8 条）
@@ -338,6 +345,51 @@ INSERT INTO ai_model_config (name, model_name, endpoint, max_tokens, temperature
 -- ---------------------------------------------
 -- Prompt 模板种子（基线，供管理端查看与维护）
 -- ---------------------------------------------
-INSERT INTO prompt_template (name, type, content, version, status) VALUES
-('SQL 生成基线', 'SQL', '你是资深数据分析师，根据给定的数据表元数据生成一条只读 SELECT SQL。只输出 SQL 本身，不要任何解释、不要 markdown 代码块、不要分号结尾。', 1, 1),
-('解读生成基线', 'INTERPRET', '你是资深数据分析师。根据给定的查询结果与指标口径，用中文输出不超过150字的分析结论，包含关键数字与趋势、占比或对比要点；只输出结论正文，不要标题、不要 markdown、不要多余解释。', 1, 1);
+INSERT INTO prompt_template (name, type, content, version, status, variables, sort) VALUES
+('SQL 生成基线', 'SQL', '你是资深数据分析师，根据给定的数据表元数据生成一条只读 SELECT SQL。只输出 SQL 本身，不要任何解释、不要 markdown 代码块、不要分号结尾。查询数值指标时，若数据表含 unit 字段，请在 SELECT 中一并返回 unit，便于图表标注单位。', 1, 1, 'datasetSchema,userQuestion,originSQL', 1),
+('解读生成基线', 'INTERPRET', '你是资深数据分析师。根据给定的查询结果与指标口径，用中文输出不超过150字的分析结论，包含关键数字与趋势、占比或对比要点；只输出结论正文，不要标题、不要 markdown、不要多余解释。', 1, 1, 'datasetSchema,resultRows', 2),
+('意图识别基线', 'INTENT', '你是数据分析意图识别器。根据用户问题判断分析意图，只输出一个 JSON 对象，不要 markdown、不要任何解释。JSON 字段：intentType（必须从给定可选项中选一个）、intentName（中文名称）、confidence（0~1 的置信度）、matchedKeywords（命中的关键词数组）。', 1, 1, 'userQuestion,availableCodes', 3),
+('推荐追问基线', 'RECOMMEND', '你是数据分析助手。根据分析意图、指标维度与查询结果摘要，给出 2~3 条与当前分析上下文相关的推荐追问，只输出 JSON 数组（每项为一句中文问题），不要任何解释。', 1, 1, 'userQuestion,intent,resultSummary', 4);
+
+
+-- ---------------------------------------------
+-- 多轮会话迁移（对已存在的旧表幂等补列，MySQL 8.0 兼容写法）
+-- 用法：新库直接建表含上述列；旧库执行下面三段（每段先查 information_schema 再 ALTER）。
+-- ---------------------------------------------
+SET @s = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'analysis_session' AND COLUMN_NAME = 'analysis_goal');
+SET @ddl = IF(@s = 0, 'ALTER TABLE analysis_session ADD COLUMN analysis_goal VARCHAR(500) NULL COMMENT ''分析目标'' AFTER title', 'SELECT 1');
+PREPARE st FROM @ddl; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'analysis_step' AND COLUMN_NAME = 'round_no');
+SET @ddl = IF(@s = 0, 'ALTER TABLE analysis_step ADD COLUMN round_no INT DEFAULT 1 COMMENT ''轮次'' AFTER session_id', 'SELECT 1');
+PREPARE st FROM @ddl; EXECUTE st; DEALLOCATE PREPARE st;
+-- prompt_template 补列（variables/sort）
+SET @s = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'prompt_template' AND COLUMN_NAME = 'variables');
+SET @ddl = IF(@s = 0, 'ALTER TABLE prompt_template ADD COLUMN variables VARCHAR(500) NULL COMMENT ''变量名逗号分隔'' AFTER content', 'SELECT 1');
+PREPARE st FROM @ddl; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'prompt_template' AND COLUMN_NAME = 'sort');
+SET @ddl = IF(@s = 0, 'ALTER TABLE prompt_template ADD COLUMN sort INT DEFAULT 0 COMMENT ''排序权重'' AFTER version', 'SELECT 1');
+PREPARE st FROM @ddl; EXECUTE st; DEALLOCATE PREPARE st;
+SET @s = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'analysis_report' AND COLUMN_NAME = 'round_no');
+SET @ddl = IF(@s = 0, 'ALTER TABLE analysis_report ADD COLUMN round_no INT DEFAULT 1 COMMENT ''轮次'' AFTER session_id', 'SELECT 1');
+PREPARE st FROM @ddl; EXECUTE st; DEALLOCATE PREPARE st;
+
+
+-- ============ Agent 多步分析计划（2026-08-18）============
+CREATE TABLE IF NOT EXISTS agent_plan (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+  user_id BIGINT NOT NULL COMMENT '所属用户',
+  title VARCHAR(200) NOT NULL COMMENT '计划标题',
+  goal TEXT NOT NULL COMMENT '宏观分析目标',
+  dataset_id BIGINT DEFAULT NULL COMMENT '关联数据集',
+  model_config_id BIGINT DEFAULT NULL COMMENT '步骤执行模型配置',
+  status VARCHAR(20) NOT NULL DEFAULT 'GENERATED' COMMENT 'GENERATED/EXECUTING/DONE/FAILED',
+  steps_json LONGTEXT DEFAULT NULL COMMENT '步骤 JSON',
+  report_title VARCHAR(300) DEFAULT NULL COMMENT '报告标题',
+  report_content LONGTEXT DEFAULT NULL COMMENT '报告正文(Markdown)',
+  report_generator_type VARCHAR(20) DEFAULT NULL COMMENT '报告生成方式 LLM/RULE',
+  report_charts_json LONGTEXT DEFAULT NULL COMMENT '报告图表数据 JSON 数组',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_agent_plan_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Agent 多步分析计划（宏观目标拆解→逐步执行→报告）';

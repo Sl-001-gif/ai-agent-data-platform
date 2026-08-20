@@ -20,7 +20,7 @@ public class SqlValidator {
 
     private static final Set<String> TABLE_WHITELIST =
             new HashSet<>(List.of("order_info", "user_info", "product_info", "GOV_INFO_RECORD", "gov_info_record",
-                    "stat_indicator"));
+                    "stat_indicator", "stat_monthly"));
 
     private static final Set<String> STATEMENT_BLACKLIST = new HashSet<>(List.of(
             "DROP", "UPDATE", "DELETE", "INSERT", "ALTER", "TRUNCATE", "CREATE", "REPLACE",
@@ -35,6 +35,9 @@ public class SqlValidator {
     private static final Set<String> SYSTEM_DB_BLACKLIST = new HashSet<>(List.of(
             "INFORMATION_SCHEMA", "PERFORMANCE_SCHEMA", "SYS", "MYSQL"));
 
+    /** MySQL 5.7 不支持 IN/ANY/SOME/ALL 子查询内使用 LIMIT（如 period IN (SELECT ... LIMIT 3)），执行必报 1064。 */
+    private static final Pattern MYSQL_LIMIT_SUBQUERY_PATTERN =
+            Pattern.compile("\\b(IN|ANY|SOME|ALL)\\s*\\(\\s*SELECT[\\s\\S]*?\\bLIMIT\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern TABLE_PATTERN =
             Pattern.compile("(FROM|JOIN)\\s+([A-Za-z0-9_]+)", Pattern.CASE_INSENSITIVE);
 
@@ -74,6 +77,9 @@ public class SqlValidator {
             if (SYSTEM_DB_BLACKLIST.contains(token)) {
                 errors.add("R8: 命中系统库: " + token);
             }
+        }
+        if (MYSQL_LIMIT_SUBQUERY_PATTERN.matcher(skeleton).find()) {
+            errors.add("R10: MySQL 不支持 IN/ANY/SOME/ALL 子查询内使用 LIMIT");
         }
         List<String> tables = extractTables(skeleton);
         if (tables.isEmpty()) {

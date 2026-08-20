@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** L2 集成测试：/api/admin/ai-config 模型配置与 Prompt 模板 CRUD（真实 MySQL dev 库，key 不入库）。 */
+/** L2 集成测试：/api/admin/ai-config 模型配置与 Prompt 模板 CRUD（真实 MySQL dev 库，key 可入库但列表不回显）。 */
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -100,7 +100,8 @@ class AiConfigAdminIntegrationTest {
         assertTrue(listContains(mockGet("/api/admin/ai-config/models", adminToken), "name", MODEL_NAME));
         Integer apiKeyCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM ai_model_config WHERE id = ? AND api_key IS NOT NULL", Integer.class, modelId);
-        assertTrue(apiKeyCount != null && apiKeyCount == 0, "api_key 不应写入数据库");
+        assertTrue(apiKeyCount != null && apiKeyCount == 1, "api_key 应写入数据库（供 LLM 客户端读取）");
+        assertTrue(noApiKeyReturned(mockGet("/api/admin/ai-config/models", adminToken)), "列表不应回显 apiKey");
 
         Map<String, Object> updated = modelPayload(modelId, MODEL_NAME + "_改");
         mockMvc.perform(put("/api/admin/ai-config/models/" + modelId)
@@ -213,6 +214,8 @@ class AiConfigAdminIntegrationTest {
         body.put("name", name);
         body.put("type", "SQL");
         body.put("content", "你是资深数据分析师，生成只读 SELECT SQL。");
+        body.put("variables", "datasetSchema,userQuestion,originSQL");
+        body.put("sort", 5);
         body.put("version", 1);
         body.put("status", 1);
         return body;

@@ -54,7 +54,7 @@ class AnalysisExecuteInvalidSqlIntegrationTest {
 
     @BeforeEach
     void stubSqlGenerator() {
-        when(sqlGenerator.generate(any(AnalysisPlan.class), any(RecognizedIntent.class)))
+        when(sqlGenerator.generate(any(AnalysisPlan.class), any(RecognizedIntent.class), any(String.class)))
                 .thenReturn(new SqlGenerator.GeneratedSql("SELECT * FROM sys_user", "RULE"));
     }
 

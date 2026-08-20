@@ -71,6 +71,11 @@ class AnalysisHistoryIntegrationTest {
                 .path("data").path("sessionId").asLong();
         assertNotNull(sessionId);
         assertTrue(listContains(mockGet("/api/analysis/sessions", token), "id", String.valueOf(sessionId)));
+        JsonNode pageData = objectMapper.readTree(
+                mockGet("/api/analysis/sessions?page=1&pageSize=3", token).getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .path("data");
+        assertTrue(pageData.path("total").asLong() >= 1, "分页 total 应 >= 1");
+        assertTrue(pageData.path("rows").size() <= 3, "分页行数不超过 pageSize");
     }
 
     @Test
@@ -100,7 +105,7 @@ class AnalysisHistoryIntegrationTest {
                 .andExpect(jsonPath("$.code").value(200));
         MvcResult list = mockGet("/api/analysis/reports", token);
         JsonNode array = objectMapper.readTree(
-                list.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data");
+                list.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data").path("rows");
         assertTrue(array.size() >= 1, "报告列表应有记录");
         long reportId = array.get(0).path("id").asLong();
 
@@ -108,6 +113,11 @@ class AnalysisHistoryIntegrationTest {
         JsonNode content = objectMapper.readTree(
                 detail.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data").path("content");
         assertTrue(!content.isNull() && content.asText().length() > 0, "报告详情 content 应非空");
+
+        MvcResult bySession = mockGet("/api/analysis/session/" + sessionId + "/report", token);
+        JsonNode roundContent = objectMapper.readTree(
+                bySession.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data").path("content");
+        assertTrue(!roundContent.isNull() && roundContent.asText().length() > 0, "按会话取报告 content 应非空");
     }
 
     @Test
@@ -128,7 +138,7 @@ class AnalysisHistoryIntegrationTest {
 
     private boolean listContains(MvcResult result, String key, String value) throws Exception {
         JsonNode array = objectMapper.readTree(
-                result.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data");
+                result.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data").path("rows");
         for (JsonNode node : array) {
             if (value.equals(node.path(key).asText())) {
                 return true;

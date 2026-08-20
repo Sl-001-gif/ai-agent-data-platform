@@ -27,10 +27,18 @@ public class AnalysisPlan {
     private String chartType;
     /** 执行步骤序列。 */
     private List<String> steps;
+    /** 关联数据集ID（null=全库路由）；供元数据注入按数据集裁剪口径。 */
+    private Long datasetId;
 
     /** 兼容构造：未指定类型（默认按目标表推导，用于测试与旧调用方）。 */
     public AnalysisPlan(String targetTable, String tableComment, List<String> metrics,
                         List<String> dimensions, String timeRange, String chartType, List<String> steps) {
-        this(null, targetTable, tableComment, metrics, dimensions, timeRange, chartType, steps);
+        this(null, targetTable, tableComment, metrics, dimensions, timeRange, chartType, steps, null);
+    }
+
+    /** 兼容构造：含计划类型（无数据集，用于旧调用方/测试）。 */
+    public AnalysisPlan(String planType, String targetTable, String tableComment, List<String> metrics,
+                        List<String> dimensions, String timeRange, String chartType, List<String> steps) {
+        this(planType, targetTable, tableComment, metrics, dimensions, timeRange, chartType, steps, null);
     }
 }

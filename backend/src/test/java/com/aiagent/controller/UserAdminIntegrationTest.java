@@ -97,6 +97,11 @@ class UserAdminIntegrationTest {
                 .path("data").path("id").asLong();
         assertTrue(listContains(mockGet("/api/admin/user", adminToken), "username", TARGET_USER));
         assertTrue(noPasswordReturned(mockGet("/api/admin/user", adminToken)), "列表不应返回密码");
+        JsonNode pageData = objectMapper.readTree(
+                mockGet("/api/admin/user?page=1&pageSize=5", adminToken).getResponse().getContentAsString(StandardCharsets.UTF_8))
+                .path("data");
+        assertTrue(pageData.path("total").asLong() >= 3, "用户分页 total 应 >= 3");
+        assertTrue(pageData.path("rows").size() <= 5, "用户分页行数不超过 pageSize");
 
         mockMvc.perform(put("/api/admin/user/" + createdId)
                         .header("Authorization", "Bearer " + adminToken)
@@ -136,7 +141,7 @@ class UserAdminIntegrationTest {
 
     private boolean noPasswordReturned(MvcResult result) throws Exception {
         JsonNode array = objectMapper.readTree(
-                result.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data");
+                result.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data").path("rows");
         for (JsonNode node : array) {
             JsonNode pwd = node.path("password");
             if (!pwd.isNull() && !pwd.asText().isEmpty()) {
@@ -154,7 +159,7 @@ class UserAdminIntegrationTest {
 
     private boolean listContains(MvcResult result, String key, String value) throws Exception {
         JsonNode array = objectMapper.readTree(
-                result.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data");
+                result.getResponse().getContentAsString(StandardCharsets.UTF_8)).path("data").path("rows");
         for (JsonNode node : array) {
             if (value.equals(node.path(key).asText())) {
                 return true;

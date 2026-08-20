@@ -1,5 +1,6 @@
 package com.aiagent.controller;
 
+import com.aiagent.ai.model.ModelRouter;
 import com.aiagent.dto.LoginRequest;
 import com.aiagent.dto.RegisterRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -44,6 +45,9 @@ class AnalysisExecuteIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private ModelRouter modelRouter;
 
     private static String testToken;
     private static Long testSessionId;

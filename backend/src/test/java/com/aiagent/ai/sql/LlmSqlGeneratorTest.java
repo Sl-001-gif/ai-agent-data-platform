@@ -5,6 +5,8 @@ import com.aiagent.ai.llm.LlmClient;
 import com.aiagent.ai.metadata.MetadataService;
 import com.aiagent.ai.model.ModelRouter;
 import com.aiagent.ai.planner.AnalysisPlan;
+import com.aiagent.ai.prompt.PromptLoader;
+import com.aiagent.mapper.AiConfigMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,8 +30,9 @@ class LlmSqlGeneratorTest {
     private final RuleSqlGenerator ruleGenerator = new RuleSqlGenerator();
     private final MetadataService metadataService = mock(MetadataService.class);
     private final ModelRouter modelRouter = mock(ModelRouter.class);
+    private final PromptLoader promptLoader = new PromptLoader(mock(AiConfigMapper.class));
     private final LlmSqlGenerator generator =
-            new LlmSqlGenerator(llmClient, validator, ruleGenerator, metadataService, modelRouter, new ObjectMapper());
+            new LlmSqlGenerator(llmClient, validator, ruleGenerator, metadataService, modelRouter, new ObjectMapper(), promptLoader);
 
     @BeforeEach
     void setUp() {
@@ -95,4 +98,82 @@ class LlmSqlGeneratorTest {
     private static RecognizedIntent govIntent() {
         return new RecognizedIntent("STRUCTURE", "信息结构分析", 0.9, List.of("分类"));
     }
+    @Test
+    void shouldUseLlmSqlForStatMonthlyWhenConfigured() {
+        when(llmClient.isConfigured()).thenReturn(true);
+        when(llmClient.chat(anyString(), anyString()))
+                .thenReturn("SELECT period, region, value, unit FROM stat_monthly WHERE indicator_name = '地区生产总值' AND region = '全市'");
+        AnalysisPlan plan = new AnalysisPlan("stat_monthly", "统计月报", List.of("地区生产总值"),
+                List.of("期间", "指标"), "近3年", "line", List.of());
+
+        SqlGenerator.GeneratedSql result = generator.generate(plan,
+                new RecognizedIntent("STAT_TREND", "统计指标趋势", 0.8, List.of("生产总值")));
+
+        assertEquals("LLM", result.generatorType(), "配置 key 后 stat_monthly 全量走 LLM");
+        assertTrue(result.sql().contains("FROM stat_monthly"), "LLM SQL 应指向 stat_monthly");
+        verify(llmClient, times(1)).chat(anyString(), anyString());
+    }
+
+    @Test
+    void shouldFallbackToRuleForStatMonthlyWhenLlmInvalid() {
+        when(llmClient.isConfigured()).thenReturn(true);
+        when(llmClient.chat(anyString(), anyString()))
+                .thenReturn("SELECT 1; DROP TABLE stat_monthly")
+                .thenReturn("SELECT 1; DROP TABLE stat_monthly");
+        AnalysisPlan plan = new AnalysisPlan("stat_monthly", "统计月报", List.of("地区生产总值"),
+                List.of("期间", "指标"), "近3年", "line", List.of());
+
+        SqlGenerator.GeneratedSql result = generator.generate(plan,
+                new RecognizedIntent("STAT_TREND", "统计指标趋势", 0.8, List.of("生产总值")));
+
+        assertEquals("RULE", result.generatorType(), "LLM 两次校验失败应回退规则");
+        assertTrue(result.sql().contains("FROM stat_monthly"), "规则 SQL 应指向 stat_monthly");
+        verify(llmClient, times(2)).chat(anyString(), anyString());
+    }
+    @Test
+    void shouldScopeMetadataByPlanDatasetId() {
+        when(llmClient.isConfigured()).thenReturn(true);
+        when(metadataService.buildMetadataText(23L)).thenReturn("【表结构】stat_monthly");
+        when(llmClient.chat(anyString(), anyString()))
+                .thenReturn("SELECT period, region, value, unit FROM stat_monthly WHERE indicator_name = '地区生产总值' AND region = '全市'");
+        AnalysisPlan plan = new AnalysisPlan("stat_monthly", "统计月报", List.of("地区生产总值"),
+                List.of("期间", "指标"), "近3年", "line", List.of());
+        plan.setDatasetId(23L);
+
+        SqlGenerator.GeneratedSql result = generator.generate(plan,
+                new RecognizedIntent("STAT_TREND", "统计指标趋势", 0.8, List.of("生产总值")));
+
+        assertEquals("LLM", result.generatorType());
+        verify(metadataService).buildMetadataText(23L);
+        verify(metadataService, never()).buildMetadataText();
+    }
+
+    @Test
+    void shouldUseRuleForStatRegionSnapshotPlan() {
+        when(llmClient.isConfigured()).thenReturn(true);
+        AnalysisPlan plan = new AnalysisPlan("stat_monthly", "统计月报", List.of("一般公共预算收入"),
+                List.of("区县"), "近3年", "bar", List.of());
+
+        SqlGenerator.GeneratedSql result = generator.generate(plan,
+                new RecognizedIntent("STAT_TREND", "统计指标趋势", 0.8, List.of("排名")));
+
+        assertEquals("RULE", result.generatorType(), "排名快照应走规则引擎避免 LLM 忽略维度");
+        assertTrue(result.sql().contains("region <> '全市'"), "规则 SQL 应按区县取数: " + result.sql());
+        verify(llmClient, never()).chat(anyString(), anyString());
+    }
+
+    @Test
+    void shouldUseRuleForStatSnapshotPlan() {
+        when(llmClient.isConfigured()).thenReturn(true);
+        AnalysisPlan plan = new AnalysisPlan("stat_monthly", "统计月报", List.of("产业投资"),
+                List.of("指标"), "最新期间", "bar", List.of());
+
+        SqlGenerator.GeneratedSql result = generator.generate(plan,
+                new RecognizedIntent("STAT_TREND", "统计指标趋势", 0.8, List.of("最新")));
+
+        assertEquals("RULE", result.generatorType(), "最新期间快照应走规则引擎避免 LLM 臆造期别");
+        assertTrue(result.sql().contains("period = (SELECT period FROM stat_monthly"), "规则 SQL 应动态取最新期别: " + result.sql());
+        verify(llmClient, never()).chat(anyString(), anyString());
+    }
+
 }

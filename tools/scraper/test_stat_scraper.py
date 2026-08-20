@@ -134,6 +134,63 @@ def test_synthetic_shapes():
     check("跳过湖南省年份表", all(r["region"] != "湖南省" for r in rows) and len(rows) > 0, "")
 
 
+def test_period_year_from_column_header():
+    # 2024年2月月报卡的「分县（市、区）GDP」表头为 2023年 + 1-12月（上年全年），
+    # 期间应取列头年份 2023，而非文档标题年份 2024。
+    buf = _build_wb({
+        "分县（市、区）GDP": [
+            ["分县（市、区）GDP", "", "", ""],
+            ["计量单位：万元", "", "", ""],
+            ["", "2023年", "累计比", "去年同期"],
+            ["", "", "增减%", ""],
+            ["", "1-12月", "增减%", "去年同期%"],
+            ["全市", "27314151", "4.806", ""],
+            ["邵东", "7633164.87218397", "5.5", ""],
+        ],
+        "分县（市、区）社会消费品零售总额": [
+            ["分县（市、区）社会消费品零售总额", "", "", "", ""],
+            ["计量单位：万元", "", "", "", ""],
+            ["", "2024年", "累计比", "去年同期", ""],
+            ["", "", "增减%", "", ""],
+            ["", "1-2月", "增减%", "去年同期%", "位"],
+            ["全市", "234005", "-10.2843", "", ""],
+            ["邵东", "8004.47", "21.696", "8", ""],
+        ],
+    })
+    rows = ss.parse_xlsx_workbook(buf.read(), "2024年2月月报卡数据")
+    gdp = next((r for r in rows if r["indicator_name"] == "分县（市、区）GDP"
+                and r["region"] == "邵东市"), None)
+    check("分县GDP: 取列头年份 2023", gdp is not None and gdp["period"] == "2023年1-12月",
+          str(gdp))
+    retail = next((r for r in rows if r["indicator_name"] == "分县（市、区）社会消费品零售总额"
+                   and r["region"] == "邵东市"), None)
+    check("分县社零: 取列头年份 2024", retail is not None and retail["period"] == "2024年1-2月",
+          str(retail))
+    check("分县GDP: 数值保留", gdp is not None and round(gdp["value"], 2) == 7633164.87,
+          str(gdp))
+
+
+def test_period_fallback_from_title_month():
+    # 2021 年及更早期月报卡「分县」表头无任何期间信息（本月止累计型），
+    # 期间按文档标题月份兜底：2021年12月月报卡 -> 2021年1-12月。
+    buf = _build_wb({
+        "分县（市、区）GDP": [
+            ["分县（市、区）GDP", "", "", ""],
+            ["计量单位：万元", "", "", ""],
+            ["", "本月止", "累计比", "增速"],
+            ["", "", "上年同", ""],
+            ["", "累    计", "期±%", "排位"],
+            ["全市", "24615348", "8.5", ""],
+            ["邵东", "6852100.6634", "9.4", "1"],
+        ],
+    })
+    rows = ss.parse_xlsx_workbook(buf.read(), "2021年12月月报卡数据")
+    gdp = next((r for r in rows if r["indicator_name"] == "分县（市、区）GDP"
+                and r["region"] == "邵东市"), None)
+    check("无表头期间: 按标题月份兜底 1-12月", gdp is not None and gdp["period"] == "2021年1-12月",
+          str(gdp))
+
+
 def test_real_sample():
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "testdata", "yuebao_202509.xlsx")
     if not os.path.exists(path):
@@ -253,8 +310,8 @@ def test_db_integration():
         rows = [dict(indicator_name="测试指标", period="2025年1-9月", region="新宁县",
                      value=100, unit="万元", sheet_name="测试表", source_type="XLSX",
                      confidence="high", generator_type="RULE")]
-        ss.insert_indicator_rows(cur, doc_id, rows)
-        ss.insert_indicator_rows(cur, doc_id, rows)  # 重跑不重复
+        ss.insert_indicator_rows(cur, doc_id, rows, "stat_indicator")
+        ss.insert_indicator_rows(cur, doc_id, rows, "stat_indicator")  # 重跑不重复
         cur.execute("SELECT COUNT(*) FROM stat_indicator WHERE stat_doc_id=%s", (doc_id,))
         check("L2: stat_indicator 幂等", cur.fetchone()[0] == 1, "duplicated")
         conn.commit()
@@ -275,6 +332,8 @@ def main():
     test_to_number()
     test_unit_from_header()
     test_synthetic_shapes()
+    test_period_year_from_column_header()
+    test_period_fallback_from_title_month()
     test_real_sample()
     test_region_in_name_not_header()
     test_rule_extract()

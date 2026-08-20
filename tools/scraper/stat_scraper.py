@@ -43,7 +43,7 @@ from bs4 import BeautifulSoup
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gov_scraper import fetch, make_session, normalize_text  # noqa: E402
 
-DB = dict(host="localhost", port=3306, user="root", password="Admin@123456",
+DB = dict(host="localhost", port=3306, user="root", password=os.environ.get("MYSQL_PWD", ""),
           database="ai_agent_data", charset="utf8mb4")
 
 SITE = "https://www.shaoyang.gov.cn"
@@ -56,17 +56,20 @@ REGION_MAP = {
     "全市": "全市", "双清": "双清区", "大祥": "大祥区", "北塔": "北塔区",
     "新邵": "新邵县", "邵阳县": "邵阳县", "隆回": "隆回县", "洞口": "洞口县",
     "绥宁": "绥宁县", "新宁": "新宁县", "城步": "城步苗族自治县",
-    "武冈": "武冈市", "邵东": "邵东市",
+    "武冈": "武冈市", "邵东": "邵东市", "市辖区": "市辖区", "市本级": "市本级",
+    "双清区": "双清区", "大祥区": "大祥区", "北塔区": "北塔区", "新邵县": "新邵县",
+    "邵阳县": "邵阳县", "隆回县": "隆回县", "洞口县": "洞口县", "绥宁县": "绥宁县",
+    "新宁县": "新宁县", "城步苗族自治县": "城步苗族自治县", "武冈市": "武冈市", "邵东市": "邵东市",
 }
 
 # sheet 表头定位：首列精确轴词（指标/项目/行业/地区…）+ 其余列关键词（数值/增速/排名…）
 _AXIS_HEADERS = ("指标", "项目", "行业", "地区", "年份", "月份", "主要指标")
-_HEADER_DETECT = ("绝对额", "增速", "增长", "增减", "同比", "排名", "位次", "产销率", "余额", "累计")
-_RANK_KW = ("排名", "位次", "名次")
-_GROWTH_KW = ("增速", "增幅", "增长率", "涨幅", "同比", "环比", "增减", "增长", "下降")
+_HEADER_DETECT = ("绝对额", "增速", "增长", "增减", "同比", "排名", "位次", "排位", "产销率", "余额", "累计", "累计比")
+_RANK_KW = ("排名", "位次", "名次", "排位")
+_GROWTH_KW = ("增速", "增幅", "增长率", "涨幅", "同比", "环比", "增减", "增长", "下降", "上年同期", "同期", "累计比")
 _VALUE_KW = ("绝对额", "总额", "总量", "余额", "产值", "收入", "支出", "完成",
              "销售", "产量", "增加值", "投资", "零售", "消费", "用电", "人口",
-             "面积", "数量", "金额", "规模", "产销率")
+             "面积", "数量", "金额", "规模", "产销率", "累计", "本月", "当月", "月末")
 _SHEET_SKIP = ("目录", "封面")
 
 # 正文噪音行
@@ -252,7 +255,7 @@ def stage1(conn, cur, session, categories, limit, force, dry_run, verbose):
 # ============================================================
 # 阶段 2：xlsx 月报卡解析
 # ============================================================
-def parse_xlsx_sheet(ws, sheet, year):
+def parse_xlsx_sheet(ws, sheet, year, doc_title=""):
     """解析单个 sheet -> 指标行列表（dict）。支持三种表形：
     A 区县表（首列=区县短名，标题行=指标名，含 绝对额/增速/排名 列）
     B 指标表 4 列（指  标 | 期间 | 绝对额(单位) | 增速(%)）
@@ -289,10 +292,18 @@ def parse_xlsx_sheet(ws, sheet, year):
     hdr_all = re.sub(r"\s+", "", " ".join(cell(r, c) for r in header_idx for c in range(max_col)))
     if "年份" in hdr_all or "月份" in hdr_all:
         return []  # 跳过 年份x月份 时间序列表（如湖南省财政对比表）
-    # 列角色
-    col_role, col_unit = {}, {}
+    # 列角色（多列时间结构：本月/累计/比上年同期 分开判定）
+    col_role, col_unit, col_hdr = {}, {}, {}
+    unit_ctx = " ".join(cell(r, c) for r in range(min(6, len(raw))) for c in range(max_col))
+    def _col_unit(hdr):
+        u = _unit_from_header(hdr)
+        if u:
+            return u
+        m = re.search(r"单位[：:]\s*([\u4e00-\u9fa5%a-zA-Z]+)", unit_ctx)
+        return m.group(1) if m else ""
     for c in range(1, max_col):
         hdr = re.sub(r"\s+", "", " ".join(cell(r, c) for r in header_idx if cell(r, c)))
+        col_hdr[c] = hdr
         if not hdr:
             continue
         if any(k in hdr for k in _RANK_KW):
@@ -300,25 +311,41 @@ def parse_xlsx_sheet(ws, sheet, year):
         elif any(k in hdr for k in _GROWTH_KW) and not re.search(r"(额|余额)", hdr):
             col_role[c] = "growth"
             col_unit[c] = "个百分点" if "百分点" in hdr else "%"
-        elif any(k in hdr for k in _VALUE_KW):
-            col_role[c] = "value"
-            col_unit[c] = _unit_from_header(hdr)
         else:
             col_role[c] = "value"
-            col_unit[c] = _unit_from_header(hdr)
+            col_unit[c] = _col_unit(hdr)
     # 期间
     period = ""
     for r in header_idx:
         for c in range(1, max_col):
             v = cell(r, c)
-            if re.match(r"^(20\d{2})?年?\s*\d{1,2}-?\d*月", v) or re.match(r"^\d{1,2}月$", v):
-                period = normalize_period(v, year)
-                break
+            m1 = re.match(r"^(20\d{2})?年?\s*\d{1,2}-?\d*月", v)
+            if not (m1 or re.match(r"^\d{1,2}月$", v)):
+                continue
+            # 单元格未带年份（如 1-12月）时，优先取同列表头中的年份（如 2023年 + 1-12月 跨行组合），
+            # 避免 2024年2月月报卡等「上年全年」列被误标为文档标题年份。
+            y = m1.group(1) if m1 else ""
+            if not y:
+                for r2 in header_idx:
+                    my = re.search(r"(20\d{2})年", re.sub(r"\s+", "", cell(r2, c)))
+                    if my:
+                        y = my.group(1)
+                        break
+            period = normalize_period(v, y or year)
+            break
         if period:
             break
     if not period:
-        period = "%s年" % year if year else ""
+        # 表头无任何期间信息（2021 及更早期月报卡「本月止累计」型表）：
+        # 按文档标题月份推导累计期间，如 2021年12月月报卡 -> 2021年1-12月。
+        tm = re.match(r"^(20\d{2})年(\d{1,2})月", (doc_title or "").strip())
+        period = "%s年1-%s月" % (tm.group(1), tm.group(2)) if tm else ("%s年" % year if year else "")
     vcol = next((c for c, role in col_role.items() if role == "value"), None)
+    # 多列时间结构（本月/1-9月累计/比上年同期）：优先取累计列作为绝对额
+    cum_col = next((c for c, role in col_role.items()
+                    if role == "value" and ("累计" in col_hdr.get(c, "") or "本年" in col_hdr.get(c, ""))), None)
+    if cum_col is not None:
+        vcol = cum_col
     gcol = next((c for c, role in col_role.items() if role == "growth"), None)
     rcol = next((c for c, role in col_role.items() if role == "rank"), None)
     data_start = max(header_idx) + 1
@@ -330,9 +357,10 @@ def parse_xlsx_sheet(ws, sheet, year):
         vals = {c: _to_number(cell(r, c)) for c in (vcol, gcol, rcol) if c is not None}
         if not any(v is not None for v in vals.values()):
             continue
-        if axis in REGION_MAP:
+        axis_key = re.sub(r"\s+", "", axis)
+        if axis_key in REGION_MAP:
             # A 区县表：indicator = sheet 标题，一行 = 一个区县
-            base = dict(indicator_name=clean_indicator_name(title) or "统计指标", region=REGION_MAP[axis],
+            base = dict(indicator_name=clean_indicator_name(title) or "统计指标", region=REGION_MAP[axis_key],
                         period=period, sheet_name=sheet, confidence="high",
                         generator_type="RULE", source_type="XLSX")
             rec = dict(base)
@@ -372,7 +400,7 @@ def parse_xlsx_workbook(data, doc_title, doc_date=None):
         if sheet.startswith(_SHEET_SKIP):
             continue
         try:
-            rows = parse_xlsx_sheet(wb[name], sheet, year)
+            rows = parse_xlsx_sheet(wb[name], sheet, year, doc_title)
         except Exception as exc:
             print("  [sheet 跳过] %s -> %s" % (sheet, exc), file=sys.stderr)
             rows = []
@@ -381,8 +409,8 @@ def parse_xlsx_workbook(data, doc_title, doc_date=None):
     return out
 
 
-def insert_indicator_rows(cur, stat_doc_id, rows):
-    sql = ("INSERT IGNORE INTO stat_indicator "
+def insert_indicator_rows(cur, stat_doc_id, rows, target):
+    sql = ("INSERT IGNORE INTO %s " % target +
            "(stat_doc_id, period, region, indicator_code, indicator_name, value, unit, "
            "growth_rate, sheet_name, source_type, confidence, generator_type) "
            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)")
@@ -396,7 +424,7 @@ def insert_indicator_rows(cur, stat_doc_id, rows):
     cur.executemany(sql, args)
 
 
-def stage2(conn, cur, session, limit, force, dry_run, verbose):
+def stage2(conn, cur, session, limit, force, dry_run, verbose, target):
     extra = "" if force else "AND parse_status IN ('DONE')"
     cur.execute("SELECT id, gov_record_id, title, source_url, attachment_url, attachment_name "
                 "FROM stat_doc WHERE category='统计月报' %s ORDER BY id" % extra)
@@ -429,7 +457,7 @@ def stage2(conn, cur, session, limit, force, dry_run, verbose):
                   % (did, title[:22], len(rows), json.dumps(rows[:2], ensure_ascii=False)))
         else:
             if rows:
-                insert_indicator_rows(cur, did, rows)
+                insert_indicator_rows(cur, did, rows, target)
                 total_ins += len(rows)
             cur.execute("UPDATE stat_doc SET parse_status='XLSX_DONE', fail_reason=NULL WHERE id=%s", (did,))
             conn.commit()
@@ -543,7 +571,7 @@ def llm_extract_indicators(text, source_type, default_period):
     return out
 
 
-def stage3(conn, cur, session, categories, limit, force, dry_run, verbose):
+def stage3(conn, cur, session, categories, limit, force, dry_run, verbose, target):
     cats = [c for c in categories if c in ("统计公报", "统计分析")]
     if not cats:
         print("stage3 仅处理 统计公报/统计分析")
@@ -569,7 +597,7 @@ def stage3(conn, cur, session, categories, limit, force, dry_run, verbose):
                   % (did, title[:22], gen, len(rows), json.dumps(rows[:2], ensure_ascii=False)))
             continue
         if rows:
-            insert_indicator_rows(cur, did, rows)
+            insert_indicator_rows(cur, did, rows, target)
             total_ins += len(rows)
         cur.execute("UPDATE stat_doc SET parse_status='TEXT_DONE', fail_reason=NULL WHERE id=%s", (did,))
         conn.commit()
@@ -596,6 +624,7 @@ def parse_args():
     p.add_argument("--force", action="store_true", help="重跑已处理文档")
     p.add_argument("--dry-run", action="store_true", help="只打印不落库")
     p.add_argument("--verbose", action="store_true", help="逐条打印")
+    p.add_argument("--target", default="stat_indicator", help="指标写入目标表（默认 stat_indicator）")
     return p.parse_args()
 
 
@@ -616,9 +645,9 @@ def main():
         if st == "1":
             stage1(conn, cur, session, cats, args.limit, args.force, args.dry_run, args.verbose)
         elif st == "2":
-            stage2(conn, cur, session, args.limit, args.force, args.dry_run, args.verbose)
+            stage2(conn, cur, session, args.limit, args.force, args.dry_run, args.verbose, args.target)
         else:
-            stage3(conn, cur, session, cats, args.limit, args.force, args.dry_run, args.verbose)
+            stage3(conn, cur, session, cats, args.limit, args.force, args.dry_run, args.verbose, args.target)
     cur.close()
     conn.close()
 

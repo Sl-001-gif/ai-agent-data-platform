@@ -5,7 +5,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center;">
           <span>用户列表</span>
           <div>
-            <el-input v-model="keyword" placeholder="请输入账号名" clearable style="width: 200px; margin-right: 8px;" @keyup.enter="fetchList" />
+            <el-input v-model="keyword" placeholder="请输入账号名" clearable style="width: 200px; margin-right: 8px;" @keyup.enter="searchList" />
             <el-button type="primary" size="small" @click="openCreate">新增</el-button>
           </div>
         </div>
@@ -32,6 +32,9 @@
           </template>
         </el-table-column>
       </el-table>
+      <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+        <el-pagination background layout="total, sizes, prev, pager, next, jumper" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[10, 20, 50, 100]" @current-change="changePage" @size-change="changeSize" />
+      </div>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑用户' : '新增用户'" width="520px" destroy-on-close>
@@ -80,6 +83,9 @@ import { listUsers, createUser, updateUser, deleteUser } from "@/api/userAdmin";
 const loading = ref(false);
 const saving = ref(false);
 const rows = ref([]);
+const page = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
 const keyword = ref("");
 const dialogVisible = ref(false);
 const formRef = ref(null);
@@ -97,13 +103,32 @@ const formRules = {
 async function fetchList() {
   loading.value = true;
   try {
-    const res = await listUsers(keyword.value.trim() || undefined);
-    if (res.code === 200) rows.value = res.data || [];
+    const res = await listUsers(keyword.value.trim() || undefined, page.value, pageSize.value);
+    if (res.code === 200) {
+      rows.value = res.data?.rows || [];
+      total.value = res.data?.total || 0;
+    }
   } catch (e) {
     ElMessage.error("加载用户失败");
   } finally {
     loading.value = false;
   }
+}
+
+function searchList() {
+  page.value = 1;
+  fetchList();
+}
+
+function changePage(p) {
+  page.value = p;
+  fetchList();
+}
+
+function changeSize(s) {
+  pageSize.value = s;
+  page.value = 1;
+  fetchList();
 }
 
 function openCreate() {
@@ -156,6 +181,8 @@ async function handleDelete(row) {
     const res = await deleteUser(row.id);
     if (res.code === 200) {
       ElMessage.success("删除成功");
+      const maxPage = Math.max(Math.ceil(Math.max(total.value - 1, 0) / pageSize.value), 1);
+      if (page.value > maxPage) page.value = maxPage;
       await fetchList();
     }
   } catch (e) {

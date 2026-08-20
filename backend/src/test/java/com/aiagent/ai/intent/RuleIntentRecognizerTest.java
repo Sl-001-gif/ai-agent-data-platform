@@ -99,4 +99,19 @@ class RuleIntentRecognizerTest {
     void recognize_shouldNotReturnRankingForStop() {
         RecognizedIntent intent = recognizer.recognize("stop 分析");
         assertNotEquals("RANKING", intent.getIntentType());
-    }}
+    }
+    @Test
+    void recognize_shouldReturnStructureForRegionShare() {
+        RecognizedIntent intent = recognizer.recognize("邵阳市不同地区经济占比");
+        assertEquals("STRUCTURE", intent.getIntentType());
+        assertEquals("占比结构", intent.getIntentName());
+        assertTrue(intent.getConfidence() >= 0.5);
+    }
+
+    @Test
+    void recognize_shouldReturnLowConfidenceForGarbageInput() {
+        RecognizedIntent intent = recognizer.recognize("12saffg");
+        assertEquals("GENERAL", intent.getIntentType());
+        assertTrue(intent.getConfidence() < 0.35, "pure garbage low confidence");
+    }
+}

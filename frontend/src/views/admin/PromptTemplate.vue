@@ -22,6 +22,8 @@
             </div>
           </template>
         </el-table-column>
+        <el-table-column prop="variables" label="变量" width="180" show-overflow-tooltip />
+        <el-table-column prop="sort" label="排序" width="70" />
         <el-table-column prop="version" label="版本" width="70" />
         <el-table-column label="状态" width="80">
           <template #default="{ row }">
@@ -55,8 +57,14 @@
         <el-form-item label="模板内容" prop="content">
           <el-input v-model="form.content" type="textarea" :rows="6" placeholder="系统提示词内容" />
         </el-form-item>
+        <el-form-item label="变量" prop="variables">
+          <el-input v-model="form.variables" placeholder="逗号分隔，如：datasetSchema,userQuestion,originSQL" />
+        </el-form-item>
         <el-form-item label="版本" prop="version">
           <el-input-number v-model="form.version" :min="1" />
+        </el-form-item>
+        <el-form-item label="排序" prop="sort">
+          <el-input-number v-model="form.sort" :min="0" />
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
@@ -87,7 +95,7 @@ const dialogVisible = ref(false);
 const formRef = ref(null);
 
 function defaultForm() {
-  return { id: null, name: "", type: "SQL", content: "", version: 1, status: 1 };
+  return { id: null, name: "", type: "SQL", content: "", version: 1, status: 1, variables: "", sort: 0 };
 }
 const form = reactive(defaultForm());
 
@@ -119,7 +127,9 @@ function openEdit(row) {
     name: row.name,
     type: row.type || "SQL",
     content: row.content || "",
+    variables: row.variables || "",
     version: row.version || 1,
+    sort: row.sort == null ? 0 : row.sort,
     status: row.status == null ? 1 : row.status,
   });
   dialogVisible.value = true;

@@ -25,7 +25,9 @@ public class DemoMetadataCatalog {
         TABLES.put("product_info", new DemoTable("product_info", "商品表",
                 List.of("销量", "销售额", "毛利率"), List.of("品类", "品牌", "价格带")));
         TABLES.put("stat_indicator", new DemoTable("stat_indicator", "统计指标库",
-                List.of("地区生产总值（GDP）", "地方一般公共预算收入", "规模以上工业增加值", "居民人均可支配收入"), List.of("期间", "区县", "指标")));
+                List.of("地区生产总值", "一般公共预算收入", "规模工业增加值", "全体居民人均可支配收入"), List.of("期间", "区县", "指标")));
+        TABLES.put("stat_monthly", new DemoTable("stat_monthly", "统计月报结构化指标（期间×区县×指标）",
+                List.of("地区生产总值", "增速"), List.of("期间", "区县")));
     }
 
     public DemoTable getTable(String name) {

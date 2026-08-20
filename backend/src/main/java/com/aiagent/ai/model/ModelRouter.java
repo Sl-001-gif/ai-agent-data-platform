@@ -46,6 +46,31 @@ public class ModelRouter {
         return picked != null ? picked : fallbackConfig();
     }
 
+    /** 依据步骤类型解析模型配置；modelConfigId 非空时优先使用该启用配置，找不到则回退默认路由。 */
+    public ModelConfig resolve(String stepType, Long modelConfigId) {
+        if (modelConfigId != null) {
+            ModelConfig override = pickById(queryConfigs(), modelConfigId);
+            if (override != null) {
+                return override;
+            }
+        }
+        return resolve(stepType);
+    }
+
+    /** 从配置行中按 id 选取启用配置；无匹配返回 null（便于单测）。 */
+    static ModelConfig pickById(List<Map<String, Object>> rows, Long id) {
+        if (rows == null || id == null) {
+            return null;
+        }
+        for (Map<String, Object> row : rows) {
+            Object cellId = row.get("id");
+            if (cellId != null && id.equals(Long.valueOf(String.valueOf(cellId)))) {
+                return toConfig(row);
+            }
+        }
+        return null;
+    }
+
     /** 步骤类型 → 配置名关键字：SQL / REPORT / 其余(text)。 */
     static String resolveConfigKey(String stepType) {
         String type = stepType == null ? "" : stepType.toUpperCase(Locale.ROOT);
@@ -93,6 +118,18 @@ public class ModelRouter {
         }
     }
 
+    /** DB 中是否存在启用且带 API Key 的模型配置（供 LlmClient 判断 LLM 是否可用）。 */
+    public boolean hasUsableConfig() {
+        for (Map<String, Object> row : queryConfigs()) {
+            Object status = row.get("status");
+            boolean enabled = status == null || "1".equals(String.valueOf(status));
+            if (enabled && notBlank(cell(row, "api_key"))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private ModelConfig fallbackConfig() {
         String env = System.getenv("AI_API_KEY");
         String key = env != null && !env.isBlank() ? env : defaultApiKey;
@@ -125,5 +162,9 @@ public class ModelRouter {
         } catch (NumberFormatException e) {
             return defaultValue;
         }
+    }
+
+    private static boolean notBlank(String s) {
+        return s != null && !s.isBlank();
     }
 }

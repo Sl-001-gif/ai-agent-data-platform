@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aiagent.mapper.StatCategoryMapper">
+
+    <select id="selectTree" resultType="com.aiagent.entity.StatCategory">
+        SELECT * FROM stat_indicator_category ORDER BY level, sort, id
+    </select>
+
+    <select id="selectById" resultType="com.aiagent.entity.StatCategory">
+        SELECT * FROM stat_indicator_category WHERE id = #{id}
+    </select>
+
+    <select id="selectByCode" resultType="com.aiagent.entity.StatCategory">
+        SELECT * FROM stat_indicator_category WHERE code = #{code} LIMIT 1
+    </select>
+
+    <select id="selectByNameAndParent" resultType="com.aiagent.entity.StatCategory">
+        SELECT * FROM stat_indicator_category
+        WHERE name = #{name} AND parent_id &lt;=&gt; #{parentId}
+        LIMIT 1
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO stat_indicator_category (parent_id, name, code, level, sort, color, status)
+        VALUES (#{parentId}, #{name}, #{code}, #{level}, #{sort}, #{color}, #{status})
+    </insert>
+
+    <update id="update">
+        UPDATE stat_indicator_category
+        SET name = #{name}, code = #{code}, sort = #{sort}, color = #{color}, status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="delete">DELETE FROM stat_indicator_category WHERE id = #{id}</delete>
+
+    <select id="countChildren" resultType="int">
+        SELECT COUNT(*) FROM stat_indicator_category WHERE parent_id = #{id}
+    </select>
+
+    <select id="maxSort" resultType="int">
+        SELECT COALESCE(MAX(sort), 0) FROM stat_indicator_category WHERE parent_id &lt;=&gt; #{parentId}
+    </select>
+</mapper>

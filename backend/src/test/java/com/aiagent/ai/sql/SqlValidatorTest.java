@@ -25,6 +25,12 @@ class SqlValidatorTest {
     }
 
     @Test
+    void shouldAcceptStatMonthlyTable() {
+        assertPassed("SELECT region, indicator_name, period, value FROM stat_monthly WHERE indicator_name = '地区生产总值（GDP）'");
+        assertPassed("SELECT region, growth_rate FROM stat_monthly WHERE period = '2024年1-12月' ORDER BY value DESC");
+    }
+
+    @Test
     void shouldAcceptValidSelect() {
         assertPassed("SELECT order_date, SUM(order_count) FROM order_info GROUP BY order_date");
         assertPassed("SELECT * FROM user_info WHERE age_group = '18-24'");
@@ -109,5 +115,10 @@ class SqlValidatorTest {
         assertRejected("");
         assertRejected("   ");
         assertRejected("SELECT 1");
+    }
+    @Test
+    void shouldRejectMysqlLimitInsideInSubquery() {
+        assertRejected("SELECT period, value FROM stat_monthly WHERE period IN (SELECT DISTINCT period FROM stat_monthly ORDER BY period DESC LIMIT 3)");
+        assertRejected("SELECT period, value FROM stat_monthly WHERE period IN (SELECT period FROM stat_monthly WHERE value > 100 LIMIT 1)");
     }
 }

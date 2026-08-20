@@ -4,19 +4,23 @@
 <mapper namespace="com.aiagent.mapper.AnalysisStepMapper">
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO analysis_step (session_id, step_order, step_type, input_data, output_data, status, error_message, duration_ms)
-        VALUES (#{sessionId}, #{stepOrder}, #{stepType}, #{inputData}, #{outputData}, #{status}, #{errorMessage}, #{durationMs})
+        INSERT INTO analysis_step (session_id, round_no, step_order, step_type, input_data, output_data, status, error_message, duration_ms)
+        VALUES (#{sessionId}, #{roundNo}, #{stepOrder}, #{stepType}, #{inputData}, #{outputData}, #{status}, #{errorMessage}, #{durationMs})
     </insert>
 
     <delete id="deleteBySessionId">
         DELETE FROM analysis_step WHERE session_id = #{sessionId}
     </delete>
 
+    <delete id="deleteBySessionIdAndRound">
+        DELETE FROM analysis_step WHERE session_id = #{sessionId} AND round_no = #{roundNo}
+    </delete>
+
     <select id="selectBySessionId" resultType="com.aiagent.entity.AnalysisStep">
-        SELECT id, session_id, step_order, step_type, input_data, output_data, status, error_message, duration_ms, create_time
+        SELECT id, session_id, round_no, step_order, step_type, input_data, output_data, status, error_message, duration_ms, create_time
         FROM analysis_step
         WHERE session_id = #{sessionId}
-        ORDER BY step_order
+        ORDER BY round_no, step_order
     </select>
 
 </mapper>

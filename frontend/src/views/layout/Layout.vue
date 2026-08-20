@@ -17,6 +17,7 @@
             <el-menu-item index="/data-table">数据表管理</el-menu-item>
             <el-menu-item index="/field-semantic">字段语义管理</el-menu-item>
             <el-menu-item index="/metric">指标口径管理</el-menu-item>
+            <el-menu-item index="/stat-category">统计指标分类</el-menu-item>
           </el-sub-menu>
           <el-sub-menu v-if="userStore.isAdmin" index="aiconf">
             <template #title>AI 能力配置</template>

@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 public class AnalysisStep {
     private Long id;
     private Long sessionId;
+    private Integer roundNo;
     private Integer stepOrder;
     private String stepType;
     private String inputData;

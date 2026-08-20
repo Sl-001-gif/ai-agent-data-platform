@@ -2,7 +2,13 @@ package com.aiagent.ai.recommender;
 
 import com.aiagent.ai.executor.SqlExecutor;
 import com.aiagent.ai.intent.RecognizedIntent;
+import com.aiagent.ai.llm.LlmClient;
+import com.aiagent.ai.model.ModelRouter;
 import com.aiagent.ai.planner.AnalysisPlan;
+import com.aiagent.ai.prompt.PromptLoader;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -19,9 +25,31 @@ import java.util.Set;
 @Component
 public class FollowupRecommender {
 
-    private static final String GOV_KEYWORD = "政务公开";
     private static final String GOV_TABLE = "GOV_INFO_RECORD";
     private static final String DEFAULT_TYPE = "GENERAL";
+    private static final String SYSTEM_PROMPT =
+            "你是数据分析助手。根据分析意图、指标维度与查询结果摘要，给出 2~3 条与当前分析上下文相关的推荐追问，"
+                    + "只输出 JSON 数组（每项为一句中文问题），不要任何解释、不要 markdown。";
+    private static final int SUMMARY_ROW_LIMIT = 8;
+    private static final int VALUE_MAX_LENGTH = 40;
+
+    private final LlmClient llmClient;
+    private final ModelRouter modelRouter;
+    private final PromptLoader promptLoader;
+    private final ObjectMapper objectMapper;
+
+    /** 测试兜底：规则模板模式（不访问 LLM/数据库）。 */
+    public FollowupRecommender() {
+        this(null, null, null);
+    }
+
+    @Autowired
+    public FollowupRecommender(LlmClient llmClient, ModelRouter modelRouter, PromptLoader promptLoader) {
+        this.llmClient = llmClient;
+        this.modelRouter = modelRouter;
+        this.promptLoader = promptLoader;
+        this.objectMapper = new ObjectMapper();
+    }
 
     private static final Map<String, List<String>> TEMPLATES = new LinkedHashMap<>();
     private static final Map<String, List<String>> GOV_TEMPLATES = new LinkedHashMap<>();
@@ -88,6 +116,10 @@ public class FollowupRecommender {
                     "当前数据为空的原因是什么？",
                     "换一个分析维度重新分析");
         }
+        List<String> llmPicked = recommendByLlm(question, intent, plan, result);
+        if (!llmPicked.isEmpty()) {
+            return llmPicked;
+        }
         String type = intent == null || intent.getIntentType() == null ? DEFAULT_TYPE : intent.getIntentType();
         Map<String, List<String>> templates = isGov(plan, intent) ? GOV_TEMPLATES : TEMPLATES;
         List<String> base = templates.getOrDefault(type, templates.get(DEFAULT_TYPE));
@@ -104,12 +136,86 @@ public class FollowupRecommender {
         return picked.isEmpty() ? new ArrayList<>(base) : picked;
     }
 
-    /** 政务类判断：命中关键词或目标表为 GOV_INFO_RECORD。 */
-    static boolean isGov(AnalysisPlan plan, RecognizedIntent intent) {
-        if (intent != null && intent.getMatchedKeywords() != null
-                && intent.getMatchedKeywords().contains(GOV_KEYWORD)) {
-            return true;
+    /** LLM 推荐追问：输出 JSON 数组，解析失败/异常/空结果一律回退规则；未配置 Key 直接跳过。 */
+    private List<String> recommendByLlm(String question, RecognizedIntent intent, AnalysisPlan plan,
+                                        SqlExecutor.ExecutionResult result) {
+        if (llmClient == null || !llmClient.isConfigured()) {
+            return List.of();
         }
+        try {
+            String type = intent == null || intent.getIntentType() == null ? DEFAULT_TYPE : intent.getIntentType();
+            String user = "分析问题：" + safe(question)
+                    + "\n意图：" + (intent == null ? "" : safe(intent.getIntentName()) + "（" + type + "）")
+                    + "\n指标：" + (plan == null || plan.getMetrics() == null ? "" : String.join("、", plan.getMetrics()))
+                    + "\n维度：" + (plan == null || plan.getDimensions() == null ? "" : String.join("、", plan.getDimensions()))
+                    + "\n结果摘要：" + buildSummary(result.columns(), result.rows());
+            String raw = llmClient.chat(promptLoader == null ? SYSTEM_PROMPT : promptLoader.load("RECOMMEND", SYSTEM_PROMPT),
+                    user, modelRouter == null ? null : modelRouter.resolve("RECOMMEND"));
+            return parseQuestionList(raw, question);
+        } catch (RuntimeException e) {
+            return List.of();
+        }
+    }
+
+    /** 解析 LLM 输出的 JSON 数组；去重、过滤与原文相同项、截取前 3 条。 */
+    private List<String> parseQuestionList(String raw, String question) {
+        if (raw == null) {
+            return List.of();
+        }
+        int start = raw.indexOf('[');
+        int end = raw.lastIndexOf(']');
+        if (start < 0 || end <= start) {
+            return List.of();
+        }
+        try {
+            JsonNode node = objectMapper.readTree(raw.substring(start, end + 1));
+            if (!node.isArray()) {
+                return List.of();
+            }
+            Set<String> seen = new LinkedHashSet<>();
+            List<String> picked = new ArrayList<>();
+            for (JsonNode item : node) {
+                String q = item.asText("");
+                if (q.isBlank() || q.equals(safe(question).trim())) {
+                    continue;
+                }
+                if (seen.add(q)) {
+                    picked.add(q);
+                }
+                if (picked.size() >= 3) {
+                    break;
+                }
+            }
+            return picked;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    /** 结果摘要：前 N 行、值截断，供 LLM 生成上下文相关追问。 */
+    private static String buildSummary(List<String> columns, List<Map<String, Object>> rows) {
+        if (columns == null || rows == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("共 ").append(rows.size()).append(" 行，列：").append(String.join(",", columns)).append("；");
+        int limit = Math.min(SUMMARY_ROW_LIMIT, rows.size());
+        for (int i = 0; i < limit; i++) {
+            StringBuilder row = new StringBuilder();
+            for (String column : columns) {
+                Object value = rows.get(i).get(column);
+                String cell = value == null ? "" : String.valueOf(value);
+                if (cell.length() > VALUE_MAX_LENGTH) {
+                    cell = cell.substring(0, VALUE_MAX_LENGTH) + "…";
+                }
+                row.append(column).append('=').append(cell).append(';');
+            }
+            sb.append('\n').append(row);
+        }
+        return sb.toString();
+    }
+
+    /** 政务类判断：仅按目标表为 GOV_INFO_RECORD 判定（关键词「政务公开」不再误伤统计查询）。 */
+    static boolean isGov(AnalysisPlan plan, RecognizedIntent intent) {
         return plan != null && GOV_TABLE.equalsIgnoreCase(safe(plan.getTargetTable()));
     }
 

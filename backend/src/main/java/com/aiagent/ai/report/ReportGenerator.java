@@ -6,6 +6,7 @@ import com.aiagent.ai.llm.LlmClient;
 import com.aiagent.ai.metadata.MetadataService;
 import com.aiagent.ai.model.ModelRouter;
 import com.aiagent.ai.planner.AnalysisPlan;
+import com.aiagent.ai.prompt.PromptLoader;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -27,7 +28,10 @@ public class ReportGenerator {
     private static final String SYSTEM_PROMPT =
             "你是资深数据分析师。根据给定的分析意图、指标口径与查询结果，用中文输出一份 Markdown 数据分析报告，"
                     + "必须包含三个部分：## 概述、## 数据要点（引用关键数字）、## 结论与建议；"
-                    + "报告用 # 一级标题，只输出报告正文，不要多余解释。";
+                    + "报告用 # 一级标题（标题 = 分析目标原文 + 「分析报告」，禁止重复『分析』等字样），只输出报告正文，不要多余解释。"
+                    + "口径规则：period 为累计期别（1-3月/1-6月/1-9月/1-12月），累计值不得跨期别计算增幅，"
+                    + "同比增幅须对比上年同期累计；城乡收入比 = 城镇居民÷农村居民，不得用全体居民作分母；"
+                    + "金额统一千分位并保留 2 位小数，增速统一保留 1 位小数并加 %。";
 
     /** 报告结果：content 为 Markdown 正文，generatorType 为 LLM 或 RULE，templateName 为规则模板名（LLM 时为 null）。 */
     public record ReportResult(String title, String content, String generatorType, String templateName) {
@@ -36,23 +40,36 @@ public class ReportGenerator {
     private final LlmClient llmClient;
     private final MetadataService metadataService;
     private final ModelRouter modelRouter;
+    private final PromptLoader promptLoader;
 
-    public ReportGenerator(LlmClient llmClient, MetadataService metadataService, ModelRouter modelRouter) {
+    public ReportGenerator(LlmClient llmClient, MetadataService metadataService, ModelRouter modelRouter,
+                           PromptLoader promptLoader) {
         this.llmClient = llmClient;
         this.metadataService = metadataService;
         this.modelRouter = modelRouter;
+        this.promptLoader = promptLoader;
     }
 
     /** 生成报告：LLM 优先；未配置/异常/空白输出一律回退规则模板，不向上抛错。 */
     public ReportResult generate(AnalysisPlan plan, RecognizedIntent intent, SqlExecutor.ExecutionResult execution,
                                  String interpretationText, String question) {
+        return generate(plan, intent, execution, interpretationText, question, null, "", null);
+    }
+
+    /** 生成报告：modelConfigId 指定 LLM 模型（null 自动路由），historyContext 为会话历史上下文。 */
+    public ReportResult generate(AnalysisPlan plan, RecognizedIntent intent, SqlExecutor.ExecutionResult execution,
+                                 String interpretationText, String question, Long modelConfigId, String historyContext, Long datasetId) {
         if (!llmClient.isConfigured()) {
             return fallback(plan, intent, execution, interpretationText);
         }
         try {
-            String metadataText = isGov(plan, intent) ? "" : metadataService.buildMetadataText();
-            String user = buildUserPrompt(metadataText, plan, intent, execution, interpretationText, question);
-            String content = llmClient.chat(SYSTEM_PROMPT, user, modelRouter.resolve("REPORT"));
+            String metadataText = "";
+            if (!isGov(plan, intent)) {
+                metadataText = datasetId == null ? metadataService.buildMetadataText()
+                        : metadataService.buildMetadataText(datasetId);
+            }
+            String user = buildUserPrompt(metadataText, historyContext, plan, intent, execution, interpretationText, question);
+            String content = llmClient.chat(promptLoader.load("REPORT", SYSTEM_PROMPT), user, modelRouter.resolve("REPORT", modelConfigId));
             if (content == null || content.isBlank()) {
                 return fallback(plan, intent, execution, interpretationText);
             }
@@ -79,6 +96,12 @@ public class ReportGenerator {
     /** 组装 LLM 用户 Prompt：指标口径（非政务）+ 意图/计划 + 解读参考 + 查询结果摘要。 */
     static String buildUserPrompt(String metadataText, AnalysisPlan plan, RecognizedIntent intent,
                                   SqlExecutor.ExecutionResult execution, String interpretationText, String question) {
+        return buildUserPrompt(metadataText, "", plan, intent, execution, interpretationText, question);
+    }
+
+    /** 组装 LLM 用户 Prompt：指标口径（非政务）+ 会话历史上下文 + 意图/计划 + 解读参考 + 查询结果摘要。 */
+    static String buildUserPrompt(String metadataText, String historyContext, AnalysisPlan plan, RecognizedIntent intent,
+                                  SqlExecutor.ExecutionResult execution, String interpretationText, String question) {
         String intentName = intent == null ? "" : safe(intent.getIntentName());
         String intentType = intent == null ? "" : safe(intent.getIntentType());
         String targetTable = plan == null ? "" : safe(plan.getTargetTable());
@@ -90,6 +113,9 @@ public class ReportGenerator {
         StringBuilder sb = new StringBuilder();
         if (metadataText != null && !metadataText.isBlank()) {
             sb.append(metadataText).append("\n");
+        }
+        if (historyContext != null && !historyContext.isBlank()) {
+            sb.append(historyContext).append("\n");
         }
         sb.append("分析目标原文: ").append(safe(question)).append("\n");
         sb.append("分析意图: ").append(intentName).append("（").append(intentType)
@@ -193,6 +219,9 @@ public class ReportGenerator {
     /** 报告标题：优先意图名称。 */
     static String buildTitle(AnalysisPlan plan, RecognizedIntent intent) {
         String name = intentNameOf(intent);
+        if (name.contains("分析报告")) {
+            return name;
+        }
         return "「" + name + "」分析报告";
     }
 

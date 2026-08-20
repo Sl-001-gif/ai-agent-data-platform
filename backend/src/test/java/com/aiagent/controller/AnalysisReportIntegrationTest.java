@@ -117,7 +117,9 @@ class AnalysisReportIntegrationTest {
                 .andExpect(jsonPath("$.data.sessionId").value(testSessionId))
                 .andExpect(jsonPath("$.data.report.title").isNotEmpty())
                 .andExpect(jsonPath("$.data.report.content").isNotEmpty())
-                .andExpect(jsonPath("$.data.report.generatorType").value(anyOf(is("LLM"), is("RULE"))));
+                .andExpect(jsonPath("$.data.report.generatorType").value(anyOf(is("LLM"), is("RULE"))))
+                .andExpect(jsonPath("$.data.report.chart.chartType").isNotEmpty())
+                .andExpect(jsonPath("$.data.report.chart.columns").isArray());
 
         Integer reportCount = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM analysis_report WHERE session_id = ?", Integer.class, testSessionId);

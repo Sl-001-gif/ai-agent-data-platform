@@ -2,6 +2,7 @@ package com.aiagent.mapper;
 
 import com.aiagent.entity.AnalysisReport;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -12,9 +13,18 @@ public interface AnalysisReportMapper {
 
     int deleteBySessionId(Long sessionId);
 
+    int deleteBySessionIdAndRound(@Param("sessionId") Long sessionId, @Param("roundNo") Integer roundNo);
+
     AnalysisReport selectBySessionId(Long sessionId);
 
-    List<AnalysisReport> selectByUserId(Long userId);
+    AnalysisReport selectBySessionIdAndRound(@Param("sessionId") Long sessionId, @Param("roundNo") Integer roundNo);
+
+    long countByUserId(Long userId);
+
+    List<AnalysisReport> selectByUserId(@Param("userId") Long userId, @Param("offset") int offset,
+                                        @Param("limit") int limit);
 
     AnalysisReport selectById(Long id);
+
+    int deleteById(Long id);
 }

@@ -95,4 +95,30 @@ class AnalysisParseIntegrationTest {
                         .content(objectMapper.writeValueAsString(Map.of("text", "  "))))
                 .andExpect(status().isBadRequest());
     }
+    @Test
+    @Order(6)
+    void parse_shouldReturnStructureForRegionShare() throws Exception {
+        mockMvc.perform(post("/api/analysis/parse")
+                        .header("Authorization", "Bearer " + testToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("text", "邵阳市不同地区经济占比"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.intent.intentType").value("STRUCTURE"))
+                .andExpect(jsonPath("$.data.plan.chartType").value("pie"))
+                .andExpect(jsonPath("$.data.plan.metrics[0]").value("地区生产总值（万元）"))
+                .andExpect(jsonPath("$.data.plan.dimensions[0]").value("区县"));
+    }
+
+    @Test
+    @Order(7)
+    void parse_shouldRejectGarbageInput() throws Exception {
+        mockMvc.perform(post("/api/analysis/parse")
+                        .header("Authorization", "Bearer " + testToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("text", "12saffg"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(422))
+                .andExpect(jsonPath("$.data.confidence").isNumber());
+    }
 }

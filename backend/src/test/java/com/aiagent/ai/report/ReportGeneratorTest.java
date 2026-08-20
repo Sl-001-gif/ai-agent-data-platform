@@ -6,6 +6,8 @@ import com.aiagent.ai.llm.LlmClient;
 import com.aiagent.ai.metadata.MetadataService;
 import com.aiagent.ai.model.ModelRouter;
 import com.aiagent.ai.planner.AnalysisPlan;
+import com.aiagent.ai.prompt.PromptLoader;
+import com.aiagent.mapper.AiConfigMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,7 +33,8 @@ class ReportGeneratorTest {
     private final LlmClient llmClient = mock(LlmClient.class);
     private final MetadataService metadataService = mock(MetadataService.class);
     private final ModelRouter modelRouter = mock(ModelRouter.class);
-    private final ReportGenerator generator = new ReportGenerator(llmClient, metadataService, modelRouter);
+    private final PromptLoader promptLoader = new PromptLoader(mock(AiConfigMapper.class));
+    private final ReportGenerator generator = new ReportGenerator(llmClient, metadataService, modelRouter, promptLoader);
 
     private AnalysisPlan plan;
     private RecognizedIntent intent;
@@ -82,7 +85,7 @@ class ReportGeneratorTest {
         assertEquals("LLM", report.generatorType());
         assertNull(report.templateName());
         assertEquals("# 报告\n\n## 概述\nLLM 内容。", report.content());
-        verify(modelRouter).resolve("REPORT");
+        verify(modelRouter).resolve("REPORT", null);
     }
 
     @Test

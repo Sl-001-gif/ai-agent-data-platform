@@ -22,6 +22,8 @@ public interface AiConfigMapper {
 
     List<PromptTemplate> selectPromptList();
 
+    PromptTemplate selectPromptByType(String type);
+
     PromptTemplate selectPromptById(Long id);
 
     int insertPrompt(PromptTemplate prompt);

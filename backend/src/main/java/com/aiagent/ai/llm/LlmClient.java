@@ -36,16 +36,18 @@ public class LlmClient {
     private int maxRetries;
 
     private final ObjectMapper objectMapper;
+    private final ModelRouter modelRouter;
 
-    public LlmClient(ObjectMapper objectMapper) {
+    public LlmClient(ObjectMapper objectMapper, ModelRouter modelRouter) {
         this.objectMapper = objectMapper;
+        this.modelRouter = modelRouter;
     }
 
-    /** 是否已配置可用 Key：环境变量 AI_API_KEY 优先，占位值视为未配置。 */
+    /** 是否已配置可用 Key：环境变量 AI_API_KEY 优先；其次 DB 存在启用且带 Key 的模型配置；占位值视为未配置。 */
     public boolean isConfigured() {
         String env = System.getenv("AI_API_KEY");
         String key = notBlank(env) ? env : apiKey;
-        return usableKey(key);
+        return usableKey(key) || modelRouter.hasUsableConfig();
     }
 
     /** 使用 yml/环境变量默认配置调用。 */

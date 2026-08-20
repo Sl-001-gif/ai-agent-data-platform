@@ -1,6 +1,7 @@
 package com.aiagent.service;
 
 import com.aiagent.dto.LoginRequest;
+import com.aiagent.dto.PageResult;
 import com.aiagent.dto.LoginResponse;
 import com.aiagent.dto.RegisterRequest;
 import com.aiagent.entity.User;
@@ -90,7 +91,9 @@ public class UserService {
 
     // ---------- 管理端用户管理 ----------
 
-    public List<User> listUsers(String keyword) {
+    private static final int MAX_PAGE_SIZE = 1000;
+
+    public PageResult<User> listUsers(String keyword, int page, int pageSize) {
         List<User> users = userMapper.findAll();
         List<User> result = new ArrayList<>();
         String kw = keyword == null ? null : keyword.trim().toLowerCase();
@@ -103,7 +106,12 @@ public class UserService {
             user.setPassword(null);
             result.add(user);
         }
-        return result;
+        int size = Math.min(Math.max(pageSize, 1), MAX_PAGE_SIZE);
+        int offset = (int) Math.min(Math.max((long) (page - 1) * size, 0L), result.size());
+        int end = Math.min(offset + size, result.size());
+        List<User> rows = offset >= result.size() ? new ArrayList<>()
+                : new ArrayList<>(result.subList(offset, end));
+        return PageResult.of(rows, result.size());
     }
 
     public User createUser(User user) {

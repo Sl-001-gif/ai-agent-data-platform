@@ -6,6 +6,7 @@ import com.aiagent.ai.llm.LlmClient;
 import com.aiagent.ai.metadata.MetadataService;
 import com.aiagent.ai.model.ModelRouter;
 import com.aiagent.ai.planner.AnalysisPlan;
+import com.aiagent.ai.prompt.PromptLoader;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -22,7 +23,6 @@ import java.util.Set;
 public class DataInterpreter {
 
     private static final String GOV_TABLE = "GOV_INFO_RECORD";
-    private static final String GOV_KEYWORD = "政务公开";
     private static final int SUMMARY_ROW_LIMIT = 20;
     private static final int VALUE_MAX_LENGTH = 60;
     private static final double RISE_THRESHOLD = 1.05;
@@ -30,7 +30,10 @@ public class DataInterpreter {
 
     private static final String SYSTEM_PROMPT =
             "你是资深数据分析师。根据给定的查询结果与指标口径，用中文输出不超过150字的分析结论，"
-                    + "包含关键数字与趋势、占比或对比要点；只输出结论正文，不要标题、不要 markdown、不要多余解释。";
+                    + "包含关键数字与趋势、占比或对比要点；只输出结论正文，不要标题、不要 markdown、不要多余解释。"
+                    + "口径规则：period 为累计期别（1-3月/1-6月/1-9月/1-12月），累计值不得跨期别计算增幅，"
+                    + "同比增幅须对比上年同期累计；城乡收入比 = 城镇居民÷农村居民，不得用全体居民作分母；"
+                    + "金额统一千分位并保留 2 位小数，增速统一保留 1 位小数并加 %。";
 
     /** 解读结果：text 为结论正文，generatorType 为 LLM 或 RULE。 */
     public record Interpretation(String text, String generatorType) {
@@ -39,22 +42,39 @@ public class DataInterpreter {
     private final LlmClient llmClient;
     private final MetadataService metadataService;
     private final ModelRouter modelRouter;
+    private final PromptLoader promptLoader;
 
-    public DataInterpreter(LlmClient llmClient, MetadataService metadataService, ModelRouter modelRouter) {
+    public DataInterpreter(LlmClient llmClient, MetadataService metadataService, ModelRouter modelRouter,
+                           PromptLoader promptLoader) {
         this.llmClient = llmClient;
         this.metadataService = metadataService;
         this.modelRouter = modelRouter;
+        this.promptLoader = promptLoader;
     }
 
     /** 生成解读：LLM 优先，未配置/异常/空输出一律回退规则模板，不向上抛错。 */
     public Interpretation interpret(AnalysisPlan plan, RecognizedIntent intent, SqlExecutor.ExecutionResult result) {
+        return interpret(plan, intent, result, null, "", null);
+    }
+
+    /** 生成解读：modelConfigId 指定 LLM 模型（null 自动路由），historyContext 为会话历史上下文。 */
+    public Interpretation interpret(AnalysisPlan plan, RecognizedIntent intent, SqlExecutor.ExecutionResult result,
+                                  Long modelConfigId, String historyContext, Long datasetId) {
         if (!llmClient.isConfigured()) {
             return fallback(plan, intent, result);
         }
+        // 0 行结果禁止走 LLM：防止模型凭先验知识编造数值，直接回退规则「无数据」文案
+        if (result == null || result.rows() == null || result.rows().isEmpty()) {
+            return fallback(plan, intent, result);
+        }
         try {
-            String metadataText = isGov(plan, intent) ? "" : metadataService.buildMetadataText();
-            String user = buildUserPrompt(metadataText, plan, intent, result.columns(), result.rows());
-            String text = llmClient.chat(SYSTEM_PROMPT, user, modelRouter.resolve("INTERPRET"));
+            String metadataText = "";
+            if (!isGov(plan, intent)) {
+                metadataText = datasetId == null ? metadataService.buildMetadataText()
+                        : metadataService.buildMetadataText(datasetId);
+            }
+            String user = buildUserPrompt(metadataText, historyContext, plan, intent, result.columns(), result.rows());
+            String text = llmClient.chat(promptLoader.load("INTERPRET", SYSTEM_PROMPT), user, modelRouter.resolve("INTERPRET", modelConfigId));
             if (text == null || text.isBlank()) {
                 return fallback(plan, intent, result);
             }
@@ -72,6 +92,12 @@ public class DataInterpreter {
     /** 组装用户 Prompt：指标口径（非政务）+ 意图/计划 + 查询结果摘要（便于单测）。 */
     static String buildUserPrompt(String metadataText, AnalysisPlan plan, RecognizedIntent intent,
                                   List<String> columns, List<Map<String, Object>> rows) {
+        return buildUserPrompt(metadataText, "", plan, intent, columns, rows);
+    }
+
+    /** 组装用户 Prompt：指标口径（非政务）+ 会话历史上下文 + 意图/计划 + 查询结果摘要（便于单测）。 */
+    static String buildUserPrompt(String metadataText, String historyContext, AnalysisPlan plan, RecognizedIntent intent,
+                                  List<String> columns, List<Map<String, Object>> rows) {
         String intentName = intent == null ? "" : safe(intent.getIntentName());
         String intentType = intent == null ? "" : safe(intent.getIntentType());
         String targetTable = plan == null ? "" : safe(plan.getTargetTable());
@@ -82,6 +108,9 @@ public class DataInterpreter {
         StringBuilder sb = new StringBuilder();
         if (metadataText != null && !metadataText.isBlank()) {
             sb.append(metadataText).append("\n");
+        }
+        if (historyContext != null && !historyContext.isBlank()) {
+            sb.append(historyContext).append("\n");
         }
         sb.append("分析意图: ").append(intentName).append("（").append(intentType)
                 .append("），目标表: ").append(targetTable).append("（").append(tableComment)
@@ -112,7 +141,7 @@ public class DataInterpreter {
     static String buildRuleConclusion(AnalysisPlan plan, RecognizedIntent intent, SqlExecutor.ExecutionResult result) {
         List<Map<String, Object>> rows = result == null ? List.of() : result.rows();
         if (rows == null || rows.isEmpty()) {
-            return "查询结果为空，建议调整时间范围或筛选条件后重试。";
+            return "查询结果为空：当前指标/时间/区域条件在数据集中无记录，可能是该统计期间尚未发布或指标口径不匹配，请核对后重试。";
         }
         String type = intent == null || intent.getIntentType() == null ? "GENERAL" : intent.getIntentType();
         boolean gov = isGov(plan, intent);
@@ -263,12 +292,8 @@ public class DataInterpreter {
         return count == 0 ? null : sum / count;
     }
 
-    /** 政务类判断：命中关键词或目标表为 GOV_INFO_RECORD。 */
+    /** 政务类判断：仅按目标表为 GOV_INFO_RECORD 判定（关键词「政务公开」不再误伤统计查询）。 */
     static boolean isGov(AnalysisPlan plan, RecognizedIntent intent) {
-        if (intent != null && intent.getMatchedKeywords() != null
-                && intent.getMatchedKeywords().contains(GOV_KEYWORD)) {
-            return true;
-        }
         return plan != null && GOV_TABLE.equalsIgnoreCase(safe(plan.getTargetTable()));
     }
 

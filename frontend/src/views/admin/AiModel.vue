@@ -8,7 +8,7 @@
         </div>
       </template>
       <el-alert type="info" :closable="false" style="margin-bottom: 12px;"
-        title="API Key 不入库：接口调用时优先读取环境变量 AI_API_KEY；这里仅维护模型名 / 地址 / 用途。" />
+        title="API Key 仅保存在本地数据库（列表不回显）；调用时环境变量 AI_API_KEY 优先，其次使用该模型配置的 Key。" />
       <el-table :data="rows" v-loading="loading" border stripe size="small">
         <el-table-column prop="name" label="配置名称" min-width="150" />
         <el-table-column prop="modelName" label="模型名" min-width="140" />
@@ -39,6 +39,9 @@
         </el-form-item>
         <el-form-item label="接口地址" prop="endpoint">
           <el-input v-model="form.endpoint" placeholder="如：https://api.deepseek.com/v1" />
+        </el-form-item>
+        <el-form-item label="API Key" prop="apiKey">
+          <el-input v-model="form.apiKey" type="password" show-password placeholder="新增可留空（用环境变量）；编辑留空表示不修改" />
         </el-form-item>
         <el-form-item label="最大 Token" prop="maxTokens">
           <el-input-number v-model="form.maxTokens" :min="1" :step="512" />
@@ -73,7 +76,7 @@ const dialogVisible = ref(false);
 const formRef = ref(null);
 
 function defaultForm() {
-  return { id: null, name: "", modelName: "", endpoint: "https://api.deepseek.com/v1", maxTokens: 2048, temperature: 0.2, status: 1 };
+  return { id: null, name: "", modelName: "", endpoint: "https://api.deepseek.com/v1", apiKey: "", maxTokens: 2048, temperature: 0.2, status: 1 };
 }
 const form = reactive(defaultForm());
 
@@ -105,6 +108,7 @@ function openEdit(row) {
     name: row.name,
     modelName: row.modelName,
     endpoint: row.endpoint || "https://api.deepseek.com/v1",
+    apiKey: "",
     maxTokens: row.maxTokens || 2048,
     temperature: row.temperature == null ? 0.2 : row.temperature,
     status: row.status == null ? 1 : row.status,

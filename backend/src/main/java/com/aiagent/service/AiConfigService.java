@@ -45,15 +45,36 @@ public class AiConfigService {
         if (model.getStatus() == null) {
             model.setStatus(1);
         }
-        model.setApiKey(null);
+        if (model.getApiKey() == null || model.getApiKey().isBlank()) {
+            model.setApiKey(null);
+        }
         aiConfigMapper.insertModel(model);
+        model.setApiKey(null);
         return model;
     }
 
+    /** 登录用户可见的启用模型选项（不含 key），供分析页模型选择器使用。 */
+    public List<AiModelConfig> listEnabledModelOptions() {
+        List<AiModelConfig> rows = aiConfigMapper.selectModelList();
+        List<AiModelConfig> result = new ArrayList<>();
+        for (AiModelConfig row : rows) {
+            if (row.getStatus() == null || row.getStatus() != 1) {
+                continue;
+            }
+            row.setApiKey(null);
+            row.setEndpoint(null);
+            result.add(row);
+        }
+        return result;
+    }
+
     public void updateModel(Long id, AiModelConfig model) {
-        requireExisting(aiConfigMapper.selectModelById(id), "模型配置不存在");
+        AiModelConfig existing = aiConfigMapper.selectModelById(id);
+        requireExisting(existing, "模型配置不存在");
         model.setId(id);
-        model.setApiKey(null);
+        if (model.getApiKey() == null || model.getApiKey().isBlank()) {
+            model.setApiKey(existing.getApiKey());
+        }
         aiConfigMapper.updateModel(model);
     }
 
@@ -78,6 +99,9 @@ public class AiConfigService {
         }
         if (prompt.getStatus() == null) {
             prompt.setStatus(1);
+        }
+        if (prompt.getSort() == null) {
+            prompt.setSort(0);
         }
         aiConfigMapper.insertPrompt(prompt);
         return prompt;

@@ -117,7 +117,32 @@ public class AnalysisConfigService {
      * 匹配链：同类型命中 → 同类型 GENERAL → 普通类型命中 → 普通类型 GENERAL。
      */
     public PlanConfigSpec resolvePlanSpec(String intentType, String typeCode) {
+        return resolvePlanSpec(intentType, typeCode, null);
+    }
+
+    /** 按（意图编码 × 计划类型 × 目标表）解析计划配置；tableName 非空时优先匹配该表模板，保证数据集路由后表与模板一致。 */
+    public PlanConfigSpec resolvePlanSpec(String intentType, String typeCode, String tableName) {
         List<PlanConfigSpec> specs = planConfigs();
+        if (tableName != null && !tableName.isBlank()) {
+            PlanConfigSpec tableMatched = null;
+            PlanConfigSpec tableGeneral = null;
+            for (PlanConfigSpec spec : specs) {
+                if (spec.tableName() != null && tableName.equalsIgnoreCase(spec.tableName())) {
+                    if (spec.intentCode().equals(intentType) && tableMatched == null) {
+                        tableMatched = spec;
+                    }
+                    if ("GENERAL".equals(spec.intentCode()) && tableGeneral == null) {
+                        tableGeneral = spec;
+                    }
+                }
+            }
+            if (tableMatched != null) {
+                return tableMatched;
+            }
+            if (tableGeneral != null) {
+                return tableGeneral;
+            }
+        }
         PlanConfigSpec matched = null;
         PlanConfigSpec general = null;
         PlanConfigSpec normMatched = null;

@@ -13,6 +13,10 @@ public class PromptTemplate {
     private String content;
     private Integer version;
     private Integer status;
+    /** 变量名逗号分隔（datasetSchema/userQuestion/originSQL 等）。 */
+    private String variables;
+    /** 排序权重。 */
+    private Integer sort;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

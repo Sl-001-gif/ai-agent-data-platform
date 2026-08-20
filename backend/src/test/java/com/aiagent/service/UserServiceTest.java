@@ -2,7 +2,10 @@ package com.aiagent.service;
 
 import com.aiagent.dto.LoginRequest;
 import com.aiagent.dto.LoginResponse;
+import com.aiagent.dto.PageResult;
 import com.aiagent.dto.RegisterRequest;
+import java.util.ArrayList;
+import java.util.List;
 import com.aiagent.entity.User;
 import com.aiagent.mapper.UserMapper;
 import com.aiagent.util.JwtUtil;
@@ -161,5 +164,87 @@ class UserServiceTest {
 
         verify(userMapper, times(1)).update(any(User.class));
         assertEquals("encoded-new", user.getPassword());
+    }
+
+    @Test
+    void listUsers_shouldSlicePagesAndMaskPassword() {
+        List<User> all = new ArrayList<>();
+        for (int i = 1; i <= 25; i++) {
+            User u = new User();
+            u.setId((long) i);
+            u.setUsername("user" + i);
+            u.setNickname("用户" + i);
+            u.setPassword("secret" + i);
+            all.add(u);
+        }
+        when(userMapper.findAll()).thenReturn(all);
+
+        PageResult<User> page1 = userService.listUsers(null, 1, 10);
+        assertEquals(25, page1.getTotal());
+        assertEquals(10, page1.getRows().size());
+        assertEquals(1L, page1.getRows().get(0).getId());
+        assertNull(page1.getRows().get(0).getPassword(), "分页行不应返回密码");
+
+        PageResult<User> page3 = userService.listUsers(null, 3, 10);
+        assertEquals(5, page3.getRows().size());
+        assertEquals(21L, page3.getRows().get(0).getId());
+
+        PageResult<User> beyond = userService.listUsers(null, 5, 10);
+        assertEquals(0, beyond.getRows().size());
+        assertEquals(25, beyond.getTotal());
+    }
+
+    @Test
+    void listUsers_shouldFilterByKeywordThenPaginate() {
+        List<User> all = new ArrayList<>();
+        for (int i = 1; i <= 20; i++) {
+            User u = new User();
+            u.setId((long) i);
+            u.setUsername("admin" + i);
+            u.setPassword("p");
+            all.add(u);
+        }
+        User other = new User();
+        other.setId(99L);
+        other.setUsername("zhang");
+        other.setPassword("p");
+        all.add(other);
+        when(userMapper.findAll()).thenReturn(all);
+
+        PageResult<User> hit = userService.listUsers("zhang", 1, 10);
+        assertEquals(1, hit.getTotal());
+        assertEquals("zhang", hit.getRows().get(0).getUsername());
+
+        PageResult<User> page2 = userService.listUsers("admin", 2, 10);
+        assertEquals(20, page2.getTotal());
+        assertEquals(10, page2.getRows().size());
+        assertEquals("admin11", page2.getRows().get(0).getUsername());
+    }
+
+    @Test
+    void listUsers_shouldClampPageSizeAndPageBounds() {
+        List<User> all = new ArrayList<>();
+        for (int i = 1; i <= 15; i++) {
+            User u = new User();
+            u.setId((long) i);
+            u.setUsername("user" + i);
+            u.setPassword("p");
+            all.add(u);
+        }
+        when(userMapper.findAll()).thenReturn(all);
+
+        PageResult<User> big = userService.listUsers(null, 1, 9999);
+        assertEquals(15, big.getTotal());
+        assertEquals(15, big.getRows().size(), "pageSize 超上限应钳到 1000（数据量小则全量返回）");
+
+        PageResult<User> zeroPage = userService.listUsers(null, 0, 10);
+        assertEquals(10, zeroPage.getRows().size(), "page<=0 应钳为第 1 页");
+
+        PageResult<User> zeroSize = userService.listUsers(null, 1, 0);
+        assertEquals(1, zeroSize.getRows().size(), "pageSize<=0 应钳为 1");
+
+        PageResult<User> hugePage = userService.listUsers(null, Integer.MAX_VALUE, 10);
+        assertEquals(0, hugePage.getRows().size(), "超大页码应返回空 rows 不报错");
+        assertEquals(15, hugePage.getTotal());
     }
 }

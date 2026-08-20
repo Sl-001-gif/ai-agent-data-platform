@@ -2,7 +2,11 @@ package com.aiagent.ai.recommender;
 
 import com.aiagent.ai.executor.SqlExecutor;
 import com.aiagent.ai.intent.RecognizedIntent;
+import com.aiagent.ai.llm.LlmClient;
+import com.aiagent.ai.model.ModelRouter;
 import com.aiagent.ai.planner.AnalysisPlan;
+import com.aiagent.ai.prompt.PromptLoader;
+import com.aiagent.mapper.AiConfigMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -12,6 +16,10 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /** L1 单测：推荐追问的意图模板、政务模板、去重过滤与空结果兜底。 */
 class FollowupRecommenderTest {
@@ -42,10 +50,12 @@ class FollowupRecommenderTest {
     }
 
     @Test
-    void shouldUseGovTemplatesWhenKeywordMatched() {
+    void shouldUseNormalTemplatesWhenKeywordOnlyNoGovTable() {
         RecognizedIntent govIntent = new RecognizedIntent("SALES_TREND", "政务发布趋势", 0.9, List.of("政务公开"));
-        List<String> list = recommender.recommend("政务信息发布趋势", govIntent, new AnalysisPlan(), result());
-        assertTrue(list.stream().anyMatch(q -> q.contains("发文量")), "政务模板应含发文量类追问: " + list);
+        AnalysisPlan statPlan = new AnalysisPlan("stat_monthly", "统计月报", List.of("地区生产总值（GDP）"),
+                List.of("期间", "区县"), "近3年", "line", List.of());
+        List<String> list = recommender.recommend("邵阳经济趋势", govIntent, statPlan, result());
+        assertFalse(list.stream().anyMatch(q -> q.contains("发文量")), "非政务表不应推发文量类追问: " + list);
     }
 
     @Test
@@ -69,5 +79,45 @@ class FollowupRecommenderTest {
         List<String> list = recommender.recommend("分析整体情况", intent("GENERAL"), new AnalysisPlan(), empty);
         assertEquals(3, list.size());
         assertTrue(list.stream().anyMatch(q -> q.contains("扩大时间范围")), "空结果应返回数据补充类追问");
+    }
+    @Test
+    void shouldUseLlmFollowupsWhenConfigured() {
+        LlmClient llmClient = mock(LlmClient.class);
+        ModelRouter modelRouter = mock(ModelRouter.class);
+        when(llmClient.isConfigured()).thenReturn(true);
+        when(llmClient.chat(anyString(), anyString(), any())).thenReturn(
+                "[\"各区县 GDP 的排名变化趋势如何？\",\"近三年哪类产业增长最快？\"]");
+        FollowupRecommender llmRecommender = new FollowupRecommender(llmClient, modelRouter, new PromptLoader(mock(AiConfigMapper.class)));
+
+        List<String> list = llmRecommender.recommend("邵阳GDP趋势", intent("STAT_TREND"), new AnalysisPlan(), result());
+
+        assertTrue(list.contains("各区县 GDP 的排名变化趋势如何？"), list.toString());
+        assertTrue(list.contains("近三年哪类产业增长最快？"), list.toString());
+    }
+
+    @Test
+    void shouldFallbackToRuleWhenLlmOutputInvalid() {
+        LlmClient llmClient = mock(LlmClient.class);
+        ModelRouter modelRouter = mock(ModelRouter.class);
+        when(llmClient.isConfigured()).thenReturn(true);
+        when(llmClient.chat(anyString(), anyString(), any())).thenReturn("不是 JSON");
+        FollowupRecommender llmRecommender = new FollowupRecommender(llmClient, modelRouter, new PromptLoader(mock(AiConfigMapper.class)));
+
+        List<String> list = llmRecommender.recommend("分析", intent("SALES_TREND"), new AnalysisPlan(), result());
+
+        assertTrue(list.size() >= 2, "LLM 输出非法应回退规则: " + list);
+    }
+
+    @Test
+    void shouldFallbackToRuleWhenLlmThrows() {
+        LlmClient llmClient = mock(LlmClient.class);
+        ModelRouter modelRouter = mock(ModelRouter.class);
+        when(llmClient.isConfigured()).thenReturn(true);
+        when(llmClient.chat(anyString(), anyString(), any())).thenThrow(new RuntimeException("LLM 失败"));
+        FollowupRecommender llmRecommender = new FollowupRecommender(llmClient, modelRouter, new PromptLoader(mock(AiConfigMapper.class)));
+
+        List<String> list = llmRecommender.recommend("分析", intent("RANKING"), new AnalysisPlan(), result());
+
+        assertTrue(list.size() >= 2, "LLM 异常应回退规则: " + list);
     }
 }

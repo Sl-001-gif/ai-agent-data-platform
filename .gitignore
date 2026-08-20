@@ -58,3 +58,12 @@ AGENTS.md
 .gh-cli/
 # ===== 本地截图与介绍材料（不入库） =====
 项目截图和介绍/
+# ===== 日志与测试产物（不入库） =====
+*.log.err
+tools/_pwtest/node_modules/
+tools/_test_stat/results*/
+tools/_test_stat/*.log
+tools/_test_stat/汇总表.csv
+tools/_test_stat/汇总报告.md
+tools/_test_stat/错峰汇总*.md
+tools/_gov_tmp/

@@ -53,6 +53,22 @@ class MetadataServiceTest {
         assertTrue(text.contains("政务公开数据集"), "文本应含数据集名");
     }
 
+    @Test
+    void shouldInjectPeriodSemanticsForStatTable() {
+        when(jdbcTemplate.queryForList(MetadataService.DATASET_SQL))
+                .thenReturn(List.of(row("name", "邵阳统计月报数据")));
+        when(jdbcTemplate.queryForList(MetadataService.TABLE_SQL))
+                .thenReturn(List.of(row("table_name", "stat_monthly", "comment", "统计月报指标长表")));
+        when(jdbcTemplate.queryForList(MetadataService.FIELD_SQL)).thenReturn(List.of());
+        when(jdbcTemplate.queryForList(MetadataService.METRIC_SQL)).thenReturn(List.of());
+
+        String text = service.buildMetadataText();
+
+        assertTrue(text.contains("统计口径与期别说明"), "统计表应注入期别口径说明");
+        assertTrue(text.contains("城乡收入比 = 城镇居民人均可支配收入 ÷ 农村居民人均可支配收入"), "应注入城乡比口径");
+        assertTrue(text.contains("累计期别"), "应说明累计期别语义");
+    }
+
     private static Map<String, Object> row(Object... kv) {
         Map<String, Object> map = new LinkedHashMap<>();
         for (int i = 0; i + 1 < kv.length; i += 2) {

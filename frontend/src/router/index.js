@@ -69,6 +69,12 @@ const routes = [
         meta: { title: "指标口径管理", requiresAuth: true, role: "ADMIN" },
       },
       {
+        path: "stat-category",
+        name: "StatCategoryManage",
+        component: () => import("@/views/admin/StatCategory.vue"),
+        meta: { title: "统计指标分类", requiresAuth: true, role: "ADMIN" },
+      },
+      {
         path: "analysis-config",
         name: "AnalysisConfig",
         component: () => import("@/views/admin/AnalysisConfig.vue"),

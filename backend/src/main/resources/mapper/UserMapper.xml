@@ -29,7 +29,7 @@
     </select>
 
     <select id="findAll" resultMap="BaseResultMap">
-        SELECT <include refid="BaseColumns"/> FROM sys_user ORDER BY create_time DESC
+        SELECT <include refid="BaseColumns"/> FROM sys_user ORDER BY create_time DESC, id DESC
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">

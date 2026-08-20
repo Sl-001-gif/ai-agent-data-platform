@@ -6,6 +6,8 @@ import com.aiagent.ai.llm.LlmClient;
 import com.aiagent.ai.metadata.MetadataService;
 import com.aiagent.ai.model.ModelRouter;
 import com.aiagent.ai.planner.AnalysisPlan;
+import com.aiagent.ai.prompt.PromptLoader;
+import com.aiagent.mapper.AiConfigMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,7 +33,8 @@ class DataInterpreterTest {
     private final LlmClient llmClient = mock(LlmClient.class);
     private final MetadataService metadataService = mock(MetadataService.class);
     private final ModelRouter modelRouter = mock(ModelRouter.class);
-    private final DataInterpreter interpreter = new DataInterpreter(llmClient, metadataService, modelRouter);
+    private final PromptLoader promptLoader = new PromptLoader(mock(AiConfigMapper.class));
+    private final DataInterpreter interpreter = new DataInterpreter(llmClient, metadataService, modelRouter, promptLoader);
 
     private AnalysisPlan plan;
     private RecognizedIntent intent;
@@ -194,5 +197,29 @@ class DataInterpreterTest {
         DataInterpreter.Interpretation result = interpreter.interpret(plan, structIntent, result(List.of(small, big)));
 
         assertTrue(result.text().contains("手机"), "应取数值最大行而非首行: " + result.text());
+    }
+
+    @Test
+    void buildUserPrompt_shouldIncludeHistoryContext() {
+        AnalysisPlan p = new AnalysisPlan("NORMAL", "stat_monthly", "统计月报", List.of("GDP"),
+                List.of("期间"), "近3年", "line", List.of());
+        RecognizedIntent it = new RecognizedIntent("SALES_TREND", "统计指标趋势", 0.9, List.of("经济"));
+
+        String prompt = DataInterpreter.buildUserPrompt("", "【会话历史分析】第1轮分析，问题：2024GDP", p, it,
+                List.of("期间", "gdp"), List.of());
+
+        assertTrue(prompt.contains("【会话历史分析】"));
+        assertTrue(prompt.contains("第1轮分析"));
+        assertTrue(prompt.contains("分析意图: 统计指标趋势"));
+    }
+    @Test
+    void shouldSkipLlmWhenZeroRows() {
+        when(llmClient.isConfigured()).thenReturn(true);
+
+        DataInterpreter.Interpretation result = interpreter.interpret(plan, intent, result(List.of()));
+
+        assertEquals("RULE", result.generatorType(), "0 行结果应禁止走 LLM，直接回退规则");
+        assertTrue(result.text().contains("查询结果为空"), "空结果应提示无数据: " + result.text());
+        verify(llmClient, never()).chat(anyString(), anyString(), any());
     }
 }

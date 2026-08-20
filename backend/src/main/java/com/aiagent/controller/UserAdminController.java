@@ -1,6 +1,7 @@
 package com.aiagent.controller;
 
 import com.aiagent.dto.ApiResponse;
+import com.aiagent.dto.PageResult;
 import com.aiagent.entity.User;
 import com.aiagent.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -29,8 +30,11 @@ public class UserAdminController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<User>>> listUsers(@RequestParam(required = false) String keyword) {
-        return ResponseEntity.ok(ApiResponse.success(userService.listUsers(keyword)));
+    public ResponseEntity<ApiResponse<PageResult<User>>> listUsers(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize) {
+        return ResponseEntity.ok(ApiResponse.success(userService.listUsers(keyword, page, pageSize)));
     }
 
     @PostMapping

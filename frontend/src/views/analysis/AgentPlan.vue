@@ -1,121 +1,169 @@
 <template>
-  <div>
-    <el-row :gutter="16">
-      <el-col :span="8">
-        <el-card>
-          <template #header>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span>分析计划</span>
-              <el-button type="primary" size="small" @click="router.push('/ai-analysis')">新建计划</el-button>
-            </div>
+  <div style="max-width: 1200px; margin: 0 auto;">
+    <!-- 顶部：计划生成配置区 -->
+    <el-card style="margin-bottom: 16px;">
+      <template #header><span>计划生成配置</span></template>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+        <el-select v-model="selectedSessionId" placeholder="选择会话（可选）" clearable size="small" style="width: 220px;">
+          <el-option v-for="s in sessionOptions" :key="s.id" :label="s.title" :value="s.id" />
+        </el-select>
+        <el-select v-model="selectedDatasetId" placeholder="选择数据集" clearable size="small" style="width: 200px;">
+          <el-option v-for="d in datasetOptions" :key="d.id" :label="d.name" :value="d.id" />
+        </el-select>
+        <el-select v-model="selectedModelId" placeholder="计划生成模型（自动路由）" clearable size="small" style="width: 210px;">
+          <el-option v-for="m in modelOptions" :key="m.id" :label="m.name + '（' + m.modelName + '）'" :value="m.id" />
+        </el-select>
+      </div>
+      <el-input v-model="analysisGoal" type="textarea" :rows="3"
+                placeholder="输入宏观分析目标，如：电商销售复盘分析 / 邵阳市经济复盘分析（系统将拆解为多步分析计划）" />
+      <div style="margin-top: 12px; text-align: right;">
+        <el-button type="primary" :loading="loading" @click="generatePlan">生成计划</el-button>
+      </div>
+    </el-card>
+
+    <!-- 中间：计划拆解展示区 -->
+    <el-card v-if="planResult" shadow="never" style="margin-bottom: 16px;">
+      <template #header>
+        <span>计划拆解</span>
+        <el-tag v-if="planResult.id" size="small" style="margin-left: 8px;">计划 #{{ planResult.id }}</el-tag>
+        <el-tag size="small" :type="statusTagType(planResult.status)" style="margin-left: 8px;">{{ statusName(planResult.status) }}</el-tag>
+      </template>
+      <h3 style="margin-top: 0; border-bottom: 1px solid #ebeef5; padding-bottom: 8px;">{{ planResult.title }}</h3>
+      <div style="color: #606266; margin-bottom: 12px; font-size: 13px;">分析目标：{{ planResult.goal }}</div>
+      <div v-for="step in planResult.steps || []" :key="step.stepNo"
+           style="border: 1px solid #ebeef5; border-radius: 6px; padding: 10px 14px; margin-bottom: 8px;">
+        <div style="font-weight: 600;">{{ step.stepNo }}. {{ step.name }}
+          <el-tag size="small" style="margin-left: 8px;">{{ step.chartType }}</el-tag>
+          <el-tag size="small" :type="step.status === 'SUCCESS' ? 'success' : (step.status === 'FAILED' ? 'danger' : 'info')" style="margin-left: 6px;">{{ step.status }}</el-tag>
+        </div>
+        <div style="font-size: 13px; color: #606266; margin-top: 4px;">分析问题：{{ step.question }}</div>
+        <div style="font-size: 13px; color: #909399; margin-top: 2px;">逻辑说明：{{ step.logic }}</div>
+        <div v-if="step.error" style="font-size: 12px; color: #f56c6c; margin-top: 2px;">错误：{{ step.error }}</div>
+      </div>
+    </el-card>
+
+    <!-- 底部：历史计划列表区 -->
+    <el-card v-if="plans.length" shadow="never">
+      <template #header>
+        <span>历史计划列表</span>
+        <el-button size="small" text type="primary" style="margin-left: 8px;" @click="fetchPlans">刷新</el-button>
+      </template>
+      <el-table :data="plans" size="small" border stripe>
+        <el-table-column prop="title" label="计划标题" min-width="180" show-overflow-tooltip />
+        <el-table-column label="数据集" width="130">
+          <template #default="{ row }">{{ datasetName(row.datasetId) }}</template>
+        </el-table-column>
+        <el-table-column prop="goal" label="分析目标" min-width="180" show-overflow-tooltip />
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag size="small" :type="statusTagType(row.status)">{{ statusName(row.status) }}</el-tag>
           </template>
-          <el-input v-model="keyword" placeholder="搜索计划" clearable size="small" style="margin-bottom: 10px;" @keyup.enter="fetchPlans" />
-          <div v-loading="loading">
-            <div v-for="p in plans" :key="p.id" class="plan-item" :class="{ active: currentId === p.id }" @click="selectPlan(p)">
-              <div style="font-weight: 600;">{{ p.title }}</div>
-              <div style="font-size: 12px; color: #909399; margin-top: 4px;">{{ p.createTime || "-" }}</div>
-            </div>
-            <el-empty v-if="!loading && plans.length === 0" description="暂无计划" />
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="16">
-        <el-card v-if="current">
-          <template #header>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span>{{ current.title }}</span>
-              <div>
-                <el-tag size="small">{{ stepCount }} 个步骤</el-tag>
-                <el-button size="small" type="primary" style="margin-left: 8px;" @click="router.push('/agent-track')">执行追踪</el-button>
-              </div>
-            </div>
+        </el-table-column>
+        <el-table-column prop="createTime" label="创建时间" width="150" />
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" link @click="goTrack(row)">执行追踪</el-button>
+            <el-button size="small" type="danger" link @click="deletePlan(row)">删除</el-button>
           </template>
-          <el-table :data="steps" v-loading="stepsLoading" border stripe size="small">
-            <el-table-column prop="stepOrder" label="序号" width="60" />
-            <el-table-column prop="stepType" label="步骤" min-width="110" />
-            <el-table-column label="状态" width="90">
-              <template #default="{ row }">
-                <el-tag size="small" :type="row.status === 'SUCCESS' ? 'success' : 'danger'">{{ row.status || "-" }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="durationMs" label="耗时(ms)" width="100" />
-            <el-table-column label="错误信息" min-width="180">
-              <template #default="{ row }">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ row.errorMessage }}</span>
-                  <el-button v-if="row.errorMessage" size="small" type="primary" link @click="detailRef.open(row.errorMessage)">详情</el-button>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-card>
-        <el-card v-else>
-          <el-empty description="从左侧选择一个计划查看步骤" />
-        </el-card>
-      </el-col>
-    </el-row>
-    <TextDetailDialog ref="detailRef" />
+        </el-table-column>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { ElMessage } from "element-plus";
-import { listSessions, listSessionSteps } from "@/api/history";
-import TextDetailDialog from "@/components/TextDetailDialog.vue";
-const detailRef = ref(null);
+import { ElMessage, ElMessageBox } from "element-plus";
+import { createAgentPlan, listAgentPlans, deleteAgentPlan } from "@/api/agentPlan";
+import { listSessions, listDatasetOptions, listModelOptions } from "@/api/history";
 
 const router = useRouter();
-const plans = ref([]);
-const steps = ref([]);
-const keyword = ref("");
+const analysisGoal = ref("");
 const loading = ref(false);
-const stepsLoading = ref(false);
-const currentId = ref(null);
-const current = ref(null);
+const selectedSessionId = ref(null);
+const selectedDatasetId = ref(null);
+const selectedModelId = ref(null);
+const sessionOptions = ref([]);
+const datasetOptions = ref([]);
+const modelOptions = ref([]);
+const plans = ref([]);
+const planResult = ref(null);
 
-const stepCount = computed(() => steps.value.length);
+function datasetName(id) {
+  if (!id) return "全库";
+  const d = datasetOptions.value.find((x) => x.id === id);
+  return d ? d.name : ("数据集 #" + id);
+}
+function statusName(status) {
+  return { GENERATED: "已生成", EXECUTING: "执行中", DONE: "已完成", FAILED: "失败" }[status] || (status || "-");
+}
+function statusTagType(status) {
+  return status === "DONE" ? "success" : (status === "FAILED" ? "danger" : (status === "EXECUTING" ? "warning" : "info"));
+}
 
-async function fetchPlans() {
+async function loadOptions() {
+  const [s, d, m] = await Promise.allSettled([listSessions(undefined, undefined, 1, 1000), listDatasetOptions(), listModelOptions()]);
+  if (s.status === "fulfilled" && s.value?.code === 200) sessionOptions.value = s.value.data?.rows || [];
+  if (d.status === "fulfilled" && d.value?.code === 200) datasetOptions.value = d.value.data || [];
+  if (m.status === "fulfilled" && m.value?.code === 200) modelOptions.value = m.value.data || [];
+}
+
+async function generatePlan() {
+  if (!analysisGoal.value.trim()) {
+    ElMessage.warning("请输入分析目标");
+    return;
+  }
   loading.value = true;
   try {
-    const res = await listSessions(keyword.value.trim() || undefined);
-    if (res.code === 200) plans.value = res.data || [];
+    const res = await createAgentPlan({
+      goal: analysisGoal.value,
+      sessionId: selectedSessionId.value || undefined,
+      datasetId: selectedDatasetId.value || undefined,
+      modelConfigId: selectedModelId.value || undefined,
+    });
+    if (res.code === 200) {
+      planResult.value = res.data;
+      ElMessage.success("计划生成成功");
+      fetchPlans();
+    } else {
+      ElMessage.warning(res.message || "计划生成失败");
+    }
   } catch (e) {
-    ElMessage.error("加载计划失败");
+    // 错误提示已由 request.js 拦截器统一处理
   } finally {
     loading.value = false;
   }
 }
 
-async function selectPlan(plan) {
-  currentId.value = plan.id;
-  current.value = plan;
-  stepsLoading.value = true;
+async function fetchPlans() {
+  const res = await listAgentPlans();
+  if (res.code === 200) plans.value = res.data || [];
+}
+
+function goTrack(row) {
+  router.push({ path: "/agent-track", query: { planId: row.id } });
+}
+
+async function deletePlan(row) {
   try {
-    const res = await listSessionSteps(plan.id);
-    if (res.code === 200) steps.value = res.data || [];
+    await ElMessageBox.confirm("确认删除该计划？其步骤结果与报告将一并删除。", "提示", { type: "warning" });
   } catch (e) {
-    ElMessage.error("加载步骤失败");
-  } finally {
-    stepsLoading.value = false;
+    return;
+  }
+  try {
+    const res = await deleteAgentPlan(row.id);
+    if (res.code === 200) {
+      ElMessage.success("删除成功");
+      fetchPlans();
+    }
+  } catch (e) {
+    ElMessage.error("删除失败");
   }
 }
 
-onMounted(fetchPlans);
+onMounted(() => {
+  loadOptions();
+  fetchPlans();
+});
 </script>
-
-<style scoped>
-.plan-item {
-  padding: 10px;
-  border: 1px solid #ebeef5;
-  border-radius: 6px;
-  margin-bottom: 8px;
-  cursor: pointer;
-}
-.plan-item.active {
-  border-color: #409eff;
-  background: #ecf5ff;
-}
-</style>

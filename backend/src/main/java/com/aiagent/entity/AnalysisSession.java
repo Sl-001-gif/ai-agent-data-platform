@@ -11,6 +11,7 @@ public class AnalysisSession {
     private Long userId;
     private Long datasetId;
     private String title;
+    private String analysisGoal;
     private String status;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
